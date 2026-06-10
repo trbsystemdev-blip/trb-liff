@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>日報入力</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        #loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #06C755;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .form-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            color: #111827;
+            background-color: #f9fafb;
+            box-sizing: border-box;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: white;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+        }
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .option-btn {
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+        .option-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .option-btn.selected {
+            border-color: #3b82f6;
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: bold;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .role-driver { background: #dbeafe; color: #1e40af; }
+        .role-guide { background: #d1fae5; color: #065f46; }
+        .required-mark { color: #ef4444; margin-left: 2px; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="loading">
+        <div class="spinner mb-4"></div>
+        <p id="loading-text" class="text-gray-600 font-bold">LINE連携中...</p>
+    </div>
+
+    <div id="app-content" style="display: none;" class="max-w-md mx-auto">
+        <header class="mb-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">日報入力</h1>
+            <div class="text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm flex items-center gap-2">
+                <span id="user-role-badge" class="role-badge role-driver">ドライバー</span>
+                <span id="user-name">読込中...</span>
+            </div>
+        </header>
+
+        <!-- 日付表示 -->
+        <div class="form-section">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-gray-700">日付</span>
+                <span id="today-display" class="text-gray-800 font-bold"></span>
+            </div>
+        </div>
+
+        <!-- ドライバー用フォーム -->
+        <div id="form-driver" style="display: none;">
+            <div class="form-section">
+                <label class="form-label">本日の主な業務<span class="required-mark">*</span></label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="option-btn" data-field="taskType" data-value="ツアー運搬">ツアー運搬</button>
+                    <button class="option-btn" data-field="taskType" data-value="レンタル運搬">レンタル運搬</button>
+                    <button class="option-btn" data-field="taskType" data-value="両方">両方</button>
+                    <button class="option-btn" data-field="taskType" data-value="その他">その他</button>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <label class="form-label" for="driver-count">運搬した自転車の台数<span class="required-mark">*</span></label>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="driver-count" class="form-input" placeholder="例：10" min="0">
+                    <span class="text-gray-600 whitespace-nowrap">台</span>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <label class="form-label" for="driver-note">特記事項・申し送り事項</label>
+                <textarea id="driver-note" class="form-textarea" placeholder="なければ空欄でOK"></textarea>
+            </div>
+        </div>
+
+        <!-- ガイド用フォーム -->
+        <div id="form-guide" style="display: none;">
+            <div class="form-section">
+                <label class="form-label">本日担当したツアー<span class="required-mark">*</span></label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="option-btn" data-field="tourType" data-value="CITY Tour">CITY Tour</button>
+                    <button class="option-btn" data-field="tourType" data-value="RIVER Tour">RIVER Tour</button>
+                    <button class="option-btn" data-field="tourType" data-value="NIGHT Tour">NIGHT Tour</button>
+                    <button class="option-btn" data-field="tourType" data-value="PRIVATE Tour">PRIVATE Tour</button>
+                    <button class="option-btn col-span-2" data-field="tourType" data-value="その他">その他</button>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <label class="form-label" for="guide-count">ゲストの人数<span class="required-mark">*</span></label>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="guide-count" class="form-input" placeholder="例：5" min="0">
+                    <span class="text-gray-600 whitespace-nowrap">名</span>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <label class="form-label" for="guide-note">特記事項・申し送り事項</label>
+                <textarea id="guide-note" class="form-textarea" placeholder="なければ空欄でOK"></textarea>
+            </div>
+        </div>
+
+        <!-- その他スタッフ用フォーム -->
+        <div id="form-general" style="display: none;">
+            <div class="form-section">
+                <label class="form-label" for="general-task">本日の業務内容<span class="required-mark">*</span></label>
+                <textarea id="general-task" class="form-textarea" placeholder="業務内容を入力してください"></textarea>
+            </div>
+            
+            <div class="form-section">
+                <label class="form-label" for="general-note">特記事項・申し送り事項</label>
+                <textarea id="general-note" class="form-textarea" placeholder="なければ空欄でOK"></textarea>
+            </div>
+        </div>
+
+        <!-- 送信ボタン -->
+        <button id="btn-submit" class="w-full py-4 bg-[#06C755] text-white rounded-lg font-bold text-lg shadow hover:bg-[#05b34c] mb-6">
+            日報を送信する
+        </button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 設定値（デプロイ時に書き換える）
+        // ==========================================
+        const LIFF_ID = "YOUR_LIFF_ID_HERE"; // LINE Developersで発行したLIFF ID
+        const GAS_WEBHOOK_URL = "YOUR_GAS_WEBHOOK_URL_HERE"; // GASのデプロイURL
+        
+        // ==========================================
+        // グローバル変数
+        // ==========================================
+        let lineProfile = null;
+        let userRole = null;
+        let formData = {}; // 選択されたデータを保持
+
+        // ==========================================
+        // 初期化処理
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 今日の日付を表示
+                const today = new Date();
+                const formatted = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日（${'日月火水木金土'[today.getDay()]}）`;
+                document.getElementById('today-display').innerText = formatted;
+                
+                // 1. LIFFの初期化
+                await liff.init({ liffId: LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                
+                // 2. ユーザー情報の取得
+                document.getElementById('loading-text').innerText = "ユーザー情報取得中...";
+                lineProfile = await liff.getProfile();
+                
+                // 3. GASからユーザーの役職を取得
+                document.getElementById('loading-text').innerText = "役職情報取得中...";
+                const userInfo = await fetchUserInfo(lineProfile.userId);
+                
+                if (!userInfo) {
+                    throw new Error("スタッフ情報が見つかりません。管理者に連絡してください。");
+                }
+                
+                userRole = userInfo.role;
+                
+                // 4. UIの更新
+                document.getElementById('user-name').innerText = userInfo.name;
+                const roleBadge = document.getElementById('user-role-badge');
+                if (userRole === 'ドライバー') {
+                    roleBadge.innerText = 'ドライバー';
+                    roleBadge.className = 'role-badge role-driver';
+                    document.getElementById('form-driver').style.display = 'block';
+                } else if (userRole === 'ガイド') {
+                    roleBadge.innerText = 'ガイド';
+                    roleBadge.className = 'role-badge role-guide';
+                    document.getElementById('form-guide').style.display = 'block';
+                } else {
+                    roleBadge.innerText = userRole || 'スタッフ';
+                    document.getElementById('form-general').style.display = 'block';
+                }
+                
+                // 5. イベントリスナーの設定
+                setupEventListeners();
+                
+                // 6. UIの表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Initialization failed', error);
+                document.getElementById('loading-text').innerText = "エラー: " + error.message;
+                document.getElementById('loading-text').style.color = "red";
+            }
+        });
+
+        // ==========================================
+        // GASからユーザー情報を取得
+        // ==========================================
+        async function fetchUserInfo(lineUid) {
+            try {
+                const url = `${GAS_WEBHOOK_URL}?action=getUserInfo&lineUid=${encodeURIComponent(lineUid)}`;
+                const response = await fetch(url, { redirect: "follow" });
+                const result = await response.json();
+                if (result.success) {
+                    return result.user;
+                }
+                return null;
+            } catch (error) {
+                console.error('fetchUserInfo error:', error);
+                return null;
+            }
+        }
+
+        // ==========================================
+        // イベントリスナー設定
+        // ==========================================
+        function setupEventListeners() {
+            // 選択ボタン（業務タイプ・ツアータイプ）
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const field = e.currentTarget.getAttribute('data-field');
+                    const value = e.currentTarget.getAttribute('data-value');
+                    
+                    // 同じフィールドの他のボタンの選択を解除
+                    document.querySelectorAll(`.option-btn[data-field="${field}"]`).forEach(b => {
+                        b.classList.remove('selected');
+                    });
+                    
+                    // このボタンを選択状態にする
+                    e.currentTarget.classList.add('selected');
+                    formData[field] = value;
+                });
+            });
+            
+            // 送信ボタン
+            document.getElementById('btn-submit').addEventListener('click', submitReport);
+        }
+
+        // ==========================================
+        // バリデーション
+        // ==========================================
+        function validateForm() {
+            if (userRole === 'ドライバー') {
+                if (!formData.taskType) {
+                    alert('業務タイプを選択してください。');
+                    return false;
+                }
+                const count = document.getElementById('driver-count').value;
+                if (!count || count < 0) {
+                    alert('台数を入力してください。');
+                    return false;
+                }
+                formData.count = count + '台';
+                formData.note = document.getElementById('driver-note').value || 'なし';
+            } else if (userRole === 'ガイド') {
+                if (!formData.tourType) {
+                    alert('ツアータイプを選択してください。');
+                    return false;
+                }
+                const count = document.getElementById('guide-count').value;
+                if (!count || count < 0) {
+                    alert('ゲスト人数を入力してください。');
+                    return false;
+                }
+                formData.count = count + '名';
+                formData.note = document.getElementById('guide-note').value || 'なし';
+            } else {
+                const task = document.getElementById('general-task').value;
+                if (!task) {
+                    alert('業務内容を入力してください。');
+                    return false;
+                }
+                formData.taskType = task;
+                formData.note = document.getElementById('general-note').value || 'なし';
+            }
+            return true;
+        }
+
+        // ==========================================
+        // データ送信処理
+        // ==========================================
+        async function submitReport() {
+            if (!validateForm()) return;
+            
+            if (!confirm('日報を送信しますか？')) return;
+            
+            const payload = {
+                source: "liff",
+                action: "saveReport",
+                lineUid: lineProfile.userId,
+                reportData: {
+                    role: userRole,
+                    taskType: formData.taskType || '',
+                    tourType: formData.tourType || '',
+                    count: formData.count || '',
+                    note: formData.note || 'なし',
+                    reportText: formData.taskType || formData.tourType || ''
+                }
+            };
+            
+            // ローディング表示
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "日報を保存中...";
+            
+            try {
+                const response = await fetch(GAS_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload),
+                    redirect: "follow"
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("日報を保存しました！お疲れ様でした！");
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error || "不明なエラー");
+                }
+                
+            } catch (error) {
+                console.error('Submit error:', error);
+                alert("保存に失敗しました: " + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

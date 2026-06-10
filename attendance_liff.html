@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勤怠確認</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        #loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #06C755;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .status-present { background: #d1fae5; color: #065f46; }
+        .status-absent { background: #fee2e2; color: #991b1b; }
+        .status-break { background: #fef3c7; color: #92400e; }
+        .status-left { background: #dbeafe; color: #1e40af; }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.15s;
+        }
+        .tab-btn.active {
+            border-bottom-color: #06C755;
+            color: #06C755;
+        }
+        
+        .attendance-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .attendance-row:last-child {
+            border-bottom: none;
+        }
+        
+        .time-block {
+            display: flex;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+        .time-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .time-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+        .time-value {
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .summary-item {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .summary-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .summary-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #111827;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="loading">
+        <div class="spinner mb-4"></div>
+        <p id="loading-text" class="text-gray-600 font-bold">データ取得中...</p>
+    </div>
+
+    <div id="app-content" style="display: none;" class="max-w-md mx-auto">
+        <header class="mb-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">勤怠確認</h1>
+            <div class="text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm">
+                <span id="user-name">読込中...</span>
+            </div>
+        </header>
+
+        <!-- 今日の状況カード -->
+        <div class="card" id="today-card">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold text-gray-700">今日の勤怠</h2>
+                <span id="today-date" class="text-sm text-gray-500"></span>
+            </div>
+            <div id="today-status" class="text-center py-4 text-gray-400">データなし</div>
+        </div>
+
+        <!-- 月間サマリーカード -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="font-bold text-gray-700">今月のサマリー</h2>
+                <span id="month-display" class="text-sm text-gray-500"></span>
+            </div>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">出勤日数</div>
+                    <div class="summary-value" id="summary-days">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">総労働時間</div>
+                    <div class="summary-value" id="summary-hours">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">平均労働時間</div>
+                    <div class="summary-value" id="summary-avg">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">休憩合計</div>
+                    <div class="summary-value" id="summary-break">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブ切り替え -->
+        <div class="card p-0">
+            <div class="flex border-b">
+                <button class="tab-btn active" data-tab="attendance" onclick="switchTab('attendance')">勤怠履歴</button>
+                <button class="tab-btn" data-tab="shift" onclick="switchTab('shift')">シフト予定</button>
+            </div>
+            
+            <!-- 勤怠履歴タブ -->
+            <div id="tab-attendance" class="p-4">
+                <div id="attendance-list">
+                    <div class="text-center text-gray-400 py-4">読込中...</div>
+                </div>
+            </div>
+            
+            <!-- シフト予定タブ -->
+            <div id="tab-shift" class="p-4" style="display: none;">
+                <div id="shift-list">
+                    <div class="text-center text-gray-400 py-4">読込中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 設定値（デプロイ時に書き換える）
+        // ==========================================
+        const LIFF_ID = "YOUR_LIFF_ID_HERE";
+        const GAS_WEBHOOK_URL = "YOUR_GAS_WEBHOOK_URL_HERE";
+        
+        // ==========================================
+        // グローバル変数
+        // ==========================================
+        let lineProfile = null;
+
+        // ==========================================
+        // 初期化処理
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 日付の設定
+                const today = new Date();
+                const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日（${'日月火水木金土'[today.getDay()]}）`;
+                const formattedMonth = `${today.getFullYear()}年${today.getMonth() + 1}月`;
+                document.getElementById('today-date').innerText = formattedDate;
+                document.getElementById('month-display').innerText = formattedMonth;
+                
+                // 1. LIFFの初期化
+                await liff.init({ liffId: LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                
+                // 2. ユーザー情報の取得
+                lineProfile = await liff.getProfile();
+                
+                // 3. GASからデータを取得
+                document.getElementById('loading-text').innerText = "勤怠データ取得中...";
+                await loadAllData();
+                
+                // 4. UIの表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Initialization failed', error);
+                document.getElementById('loading-text').innerText = "エラー: " + error.message;
+                document.getElementById('loading-text').style.color = "red";
+            }
+        });
+
+        // ==========================================
+        // データ取得・表示処理
+        // ==========================================
+        async function loadAllData() {
+            const lineUid = lineProfile.userId;
+            const today = new Date();
+            const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
+            
+            try {
+                // GASからデータを取得
+                const url = `${GAS_WEBHOOK_URL}?action=getAttendanceData&lineUid=${encodeURIComponent(lineUid)}&ym=${ym}`;
+                const response = await fetch(url, { redirect: "follow" });
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || "データ取得失敗");
+                }
+                
+                const data = result.data;
+                
+                // ユーザー名の設定
+                document.getElementById('user-name').innerText = data.userName || lineProfile.displayName;
+                
+                // 今日の勤怠の表示
+                renderTodayStatus(data.today);
+                
+                // 月間サマリーの表示
+                renderMonthlySummary(data.summary);
+                
+                // 勤怠履歴の表示
+                renderAttendanceList(data.records);
+                
+                // シフト予定の表示
+                renderShiftList(data.shifts);
+                
+            } catch (error) {
+                console.error('loadAllData error:', error);
+                document.getElementById('today-status').innerHTML = `<span class="text-red-500">データ取得エラー</span>`;
+                document.getElementById('attendance-list').innerHTML = `<div class="text-center text-red-400 py-4">エラー: ${error.message}</div>`;
+            }
+        }
+
+        function renderTodayStatus(today) {
+            const el = document.getElementById('today-status');
+            
+            if (!today || !today.clockIn) {
+                el.innerHTML = `
+                    <div class="text-gray-400 text-center py-2">
+                        <div class="text-3xl mb-2">📋</div>
+                        <div>本日の打刻記録はありません</div>
+                    </div>`;
+                return;
+            }
+            
+            let statusBadge = '';
+            if (today.clockOut) {
+                statusBadge = `<span class="status-badge status-left">退勤済</span>`;
+            } else if (today.breakStart && !today.breakEnd) {
+                statusBadge = `<span class="status-badge status-break">休憩中</span>`;
+            } else {
+                statusBadge = `<span class="status-badge status-present">出勤中</span>`;
+            }
+            
+            el.innerHTML = `
+                <div class="flex justify-between items-center mb-3">
+                    <div>${statusBadge}</div>
+                    ${today.workHours ? `<div class="font-bold text-lg">${today.workHours}</div>` : ''}
+                </div>
+                <div class="time-block justify-center">
+                    <div class="time-item">
+                        <span class="time-label">出勤</span>
+                        <span class="time-value">${today.clockIn || '-'}</span>
+                    </div>
+                    ${today.breakStart ? `
+                    <div class="time-item">
+                        <span class="time-label">休憩開始</span>
+                        <span class="time-value">${today.breakStart}</span>
+                    </div>` : ''}
+                    ${today.breakEnd ? `
+                    <div class="time-item">
+                        <span class="time-label">休憩終了</span>
+                        <span class="time-value">${today.breakEnd}</span>
+                    </div>` : ''}
+                    <div class="time-item">
+                        <span class="time-label">退勤</span>
+                        <span class="time-value">${today.clockOut || '-'}</span>
+                    </div>
+                </div>`;
+        }
+
+        function renderMonthlySummary(summary) {
+            if (!summary) return;
+            document.getElementById('summary-days').innerText = summary.days ? `${summary.days}日` : '-';
+            document.getElementById('summary-hours').innerText = summary.totalHours || '-';
+            document.getElementById('summary-avg').innerText = summary.avgHours || '-';
+            document.getElementById('summary-break').innerText = summary.totalBreak || '-';
+        }
+
+        function renderAttendanceList(records) {
+            const el = document.getElementById('attendance-list');
+            
+            if (!records || records.length === 0) {
+                el.innerHTML = '<div class="text-center text-gray-400 py-4">今月の記録はありません</div>';
+                return;
+            }
+            
+            const html = records.map(r => {
+                const dateObj = new Date(r.date);
+                const dayLabel = `${dateObj.getMonth() + 1}/${dateObj.getDate()}（${'日月火水木金土'[dateObj.getDay()]}）`;
+                
+                return `
+                <div class="attendance-row">
+                    <div>
+                        <div class="font-bold text-sm">${dayLabel}</div>
+                        ${r.workHours ? `<div class="text-xs text-gray-500">実働 ${r.workHours}</div>` : ''}
+                    </div>
+                    <div class="time-block">
+                        <div class="time-item">
+                            <span class="time-label">出勤</span>
+                            <span class="time-value text-sm">${r.clockIn || '-'}</span>
+                        </div>
+                        <div class="time-item">
+                            <span class="time-label">退勤</span>
+                            <span class="time-value text-sm">${r.clockOut || '-'}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            el.innerHTML = html;
+        }
+
+        function renderShiftList(shifts) {
+            const el = document.getElementById('shift-list');
+            
+            if (!shifts || shifts.length === 0) {
+                el.innerHTML = '<div class="text-center text-gray-400 py-4">今月のシフト予定はありません</div>';
+                return;
+            }
+            
+            const html = shifts.map(s => {
+                const dateObj = new Date(s.date);
+                const dayLabel = `${dateObj.getMonth() + 1}/${dateObj.getDate()}（${'日月火水木金土'[dateObj.getDay()]}）`;
+                
+                let timeBadgeClass = 'bg-blue-100 text-blue-800';
+                if (s.time && s.time.includes('午前')) timeBadgeClass = 'bg-yellow-100 text-yellow-800';
+                if (s.time && s.time.includes('午後')) timeBadgeClass = 'bg-orange-100 text-orange-800';
+                if (s.time && s.time.includes('休み')) timeBadgeClass = 'bg-red-100 text-red-800';
+                
+                return `
+                <div class="attendance-row">
+                    <div class="font-bold text-sm">${dayLabel}</div>
+                    <div>
+                        <span class="status-badge ${timeBadgeClass}">${s.time || '-'}</span>
+                        ${s.status === '確定' ? '<span class="ml-1 text-xs text-green-600 font-bold">✓確定</span>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+            
+            el.innerHTML = html;
+        }
+
+        // ==========================================
+        // タブ切り替え
+        // ==========================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+            });
+            document.getElementById('tab-attendance').style.display = tabName === 'attendance' ? 'block' : 'none';
+            document.getElementById('tab-shift').style.display = tabName === 'shift' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

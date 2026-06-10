@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シフト希望入力</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- Tailwind CSS (スタイリング用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FullCalendar (カレンダーUI用) -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        #calendar {
+            background-color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .fc-daygrid-day {
+            cursor: pointer;
+        }
+        .fc-daygrid-day:hover {
+            background-color: #f0f9ff;
+        }
+        .selected-day {
+            background-color: #e0f2fe !important;
+            border: 2px solid #3b82f6 !important;
+        }
+        .shift-badge {
+            font-size: 0.75rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-top: 2px;
+            display: block;
+            text-align: center;
+        }
+        .shift-allday { background-color: #dbeafe; color: #1e40af; }
+        .shift-am { background-color: #fef3c7; color: #1e3a8a; }
+        .shift-pm { background-color: #ffedd5; color: #92400e; }
+        .shift-off { background-color: #fee2e2; color: #991b1b; }
+        
+        /* ローディングオーバーレイ */
+        #loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #06C755; /* LINE Green */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4">
+    
+    <div id="loading">
+        <div class="spinner mb-4"></div>
+        <p id="loading-text" class="text-gray-600 font-bold">LINE連携中...</p>
+    </div>
+
+    <div id="app-content" style="display: none;" class="max-w-md mx-auto">
+        <header class="mb-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">シフト希望入力</h1>
+            <div class="text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm">
+                <span id="user-name">読込中...</span>
+            </div>
+        </header>
+
+        <!-- カレンダー表示エリア -->
+        <div id="calendar"></div>
+
+        <!-- 選択した日付のシフト設定エリア -->
+        <div id="shift-editor" class="bg-white p-4 rounded-lg shadow-sm mb-4 hidden">
+            <h2 id="selected-date-display" class="text-lg font-bold mb-3 border-b pb-2">日付を選択してください</h2>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button class="shift-btn py-3 rounded border border-gray-300 bg-gray-50 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" data-value="全日（9:00-18:00）">
+                    全日<br><span class="text-xs text-gray-500">9:00-18:00</span>
+                </button>
+                <button class="shift-btn py-3 rounded border border-gray-300 bg-gray-50 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" data-value="午前（9:00-13:00）">
+                    午前<br><span class="text-xs text-gray-500">9:00-13:00</span>
+                </button>
+                <button class="shift-btn py-3 rounded border border-gray-300 bg-gray-50 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" data-value="午後（13:00-18:00）">
+                    午後<br><span class="text-xs text-gray-500">13:00-18:00</span>
+                </button>
+                <button class="shift-btn py-3 rounded border border-gray-300 bg-gray-50 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500" data-value="休み希望">
+                    休み希望
+                </button>
+            </div>
+            
+            <div class="flex justify-between">
+                <button id="btn-clear" class="px-4 py-2 text-gray-600 bg-gray-200 rounded hover:bg-gray-300">クリア</button>
+                <button id="btn-apply" class="px-6 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 font-bold">この日に設定</button>
+            </div>
+        </div>
+
+        <!-- 送信ボタンエリア -->
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+            <div class="flex justify-between items-center mb-3">
+                <span class="font-bold">設定済みのシフト:</span>
+                <span id="shift-count" class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-bold">0件</span>
+            </div>
+            <button id="btn-submit" class="w-full py-3 bg-[#06C755] text-white rounded-lg font-bold text-lg shadow hover:bg-[#05b34c] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                KINTONEに送信する
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 設定値（デプロイ時に書き換える）
+        // ==========================================
+        const LIFF_ID = "YOUR_LIFF_ID_HERE"; // LINE Developersで発行したLIFF ID
+        const GAS_WEBHOOK_URL = "YOUR_GAS_WEBHOOK_URL_HERE"; // GASのデプロイURL
+        
+        // ==========================================
+        // グローバル変数
+        // ==========================================
+        let lineProfile = null;
+        let calendar = null;
+        let selectedDateStr = null;
+        let shiftData = {}; // { "2026-07-01": "全日（9:00-18:00）", ... }
+        let selectedShiftValue = null;
+
+        // ==========================================
+        // 初期化処理
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // 1. LIFFの初期化
+                await liff.init({ liffId: LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    // 外部ブラウザで開かれた場合はログインを促す
+                    liff.login();
+                    return;
+                }
+                
+                // 2. ユーザー情報の取得
+                document.getElementById('loading-text').innerText = "ユーザー情報取得中...";
+                lineProfile = await liff.getProfile();
+                document.getElementById('user-name').innerText = lineProfile.displayName;
+                
+                // 3. カレンダーの初期化
+                initCalendar();
+                
+                // 4. UIの表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+                // 5. イベントリスナーの設定
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('LIFF Initialization failed', error);
+                document.getElementById('loading-text').innerText = "エラーが発生しました";
+                document.getElementById('loading-text').style.color = "red";
+                alert("初期化エラー: " + error.message);
+            }
+        });
+
+        // ==========================================
+        // カレンダー初期化
+        // ==========================================
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            
+            // 来月を表示するように設定
+            const today = new Date();
+            const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                initialDate: nextMonth,
+                locale: 'ja',
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: 'today'
+                },
+                height: 'auto',
+                selectable: true,
+                dateClick: function(info) {
+                    selectDate(info.dateStr);
+                },
+                dayCellClassNames: function(arg) {
+                    if (arg.dateStr === selectedDateStr) {
+                        return ['selected-day'];
+                    }
+                    return [];
+                }
+            });
+            
+            calendar.render();
+        }
+
+        // ==========================================
+        // UI操作処理
+        // ==========================================
+        function selectDate(dateStr) {
+            selectedDateStr = dateStr;
+            
+            // カレンダーの再描画（選択状態の更新）
+            calendar.updateSize(); // 強制再描画のトリガー
+            
+            // エディタの表示
+            const editor = document.getElementById('shift-editor');
+            editor.classList.remove('hidden');
+            
+            // 日付のフォーマット表示
+            const dateObj = new Date(dateStr);
+            const formattedDate = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+            document.getElementById('selected-date-display').innerText = `${formattedDate} のシフト希望`;
+            
+            // 既存の設定があれば選択状態にする
+            resetShiftButtons();
+            if (shiftData[dateStr]) {
+                selectedShiftValue = shiftData[dateStr];
+                highlightSelectedButton(selectedShiftValue);
+            } else {
+                selectedShiftValue = null;
+            }
+        }
+
+        function setupEventListeners() {
+            // シフト選択ボタン
+            const shiftBtns = document.querySelectorAll('.shift-btn');
+            shiftBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const value = e.currentTarget.getAttribute('data-value');
+                    selectedShiftValue = value;
+                    highlightSelectedButton(value);
+                });
+            });
+            
+            // この日に設定ボタン
+            document.getElementById('btn-apply').addEventListener('click', () => {
+                if (!selectedDateStr) return;
+                
+                if (selectedShiftValue) {
+                    shiftData[selectedDateStr] = selectedShiftValue;
+                    updateCalendarEvent(selectedDateStr, selectedShiftValue);
+                } else {
+                    delete shiftData[selectedDateStr];
+                    removeCalendarEvent(selectedDateStr);
+                }
+                
+                updateSubmitButton();
+                
+                // 次の日に自動移動するなどのUX改善も可能
+            });
+            
+            // クリアボタン
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                if (!selectedDateStr) return;
+                selectedShiftValue = null;
+                resetShiftButtons();
+                delete shiftData[selectedDateStr];
+                removeCalendarEvent(selectedDateStr);
+                updateSubmitButton();
+            });
+            
+            // 送信ボタン
+            document.getElementById('btn-submit').addEventListener('click', submitShifts);
+        }
+
+        function resetShiftButtons() {
+            document.querySelectorAll('.shift-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-blue-500', 'ring-red-500', 'bg-blue-100', 'bg-red-100');
+            });
+        }
+
+        function highlightSelectedButton(value) {
+            resetShiftButtons();
+            const btn = document.querySelector(`.shift-btn[data-value="${value}"]`);
+            if (btn) {
+                if (value === '休み希望') {
+                    btn.classList.add('ring-2', 'ring-red-500', 'bg-red-100');
+                } else {
+                    btn.classList.add('ring-2', 'ring-blue-500', 'bg-blue-100');
+                }
+            }
+        }
+
+        function updateCalendarEvent(dateStr, value) {
+            removeCalendarEvent(dateStr);
+            
+            let className = '';
+            let shortTitle = '';
+            
+            if (value.includes('全日')) { className = 'shift-allday'; shortTitle = '全日'; }
+            else if (value.includes('午前')) { className = 'shift-am'; shortTitle = '午前'; }
+            else if (value.includes('午後')) { className = 'shift-pm'; shortTitle = '午後'; }
+            else if (value.includes('休み')) { className = 'shift-off'; shortTitle = '休'; }
+            
+            calendar.addEvent({
+                id: `shift-${dateStr}`,
+                title: shortTitle,
+                start: dateStr,
+                allDay: true,
+                classNames: ['shift-badge', className]
+            });
+        }
+
+        function removeCalendarEvent(dateStr) {
+            const event = calendar.getEventById(`shift-${dateStr}`);
+            if (event) {
+                event.remove();
+            }
+        }
+
+        function updateSubmitButton() {
+            const count = Object.keys(shiftData).length;
+            document.getElementById('shift-count').innerText = `${count}件`;
+            
+            const btn = document.getElementById('btn-submit');
+            if (count > 0) {
+                btn.removeAttribute('disabled');
+            } else {
+                btn.setAttribute('disabled', 'disabled');
+            }
+        }
+
+        // ==========================================
+        // データ送信処理
+        // ==========================================
+        async function submitShifts() {
+            const keys = Object.keys(shiftData);
+            if (keys.length === 0) return;
+            
+            if (!confirm(`${keys.length}件のシフト希望を送信しますか？`)) {
+                return;
+            }
+            
+            // 送信データの整形
+            const shiftsArray = keys.map(date => {
+                return {
+                    date: date,
+                    time: shiftData[date]
+                };
+            });
+            
+            const payload = {
+                source: "liff",
+                action: "saveShifts",
+                lineUid: lineProfile.userId,
+                shifts: shiftsArray
+            };
+            
+            // ローディング表示
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "KINTONEに保存中...";
+            
+            try {
+                // GASにPOSTリクエストを送信
+                // fetch APIを使用（CORS回避のため redirect: "follow" を指定）
+                const response = await fetch(GAS_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain', // GASのCORS制約を回避するためtext/plainを使用
+                    },
+                    body: JSON.stringify(payload),
+                    redirect: "follow"
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("シフト希望を保存しました！");
+                    // LIFFウィンドウを閉じる
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error || "不明なエラー");
+                }
+                
+            } catch (error) {
+                console.error('Submit error:', error);
+                alert("保存に失敗しました: " + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
