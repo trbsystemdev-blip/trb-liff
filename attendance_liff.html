@@ -171,7 +171,7 @@
     document.getElementById("mainContent").style.display = "none";
     const ym = currentYear + String(currentMonth + 1).padStart(2, "0");
     document.getElementById("monthTitle").textContent = currentYear + "年" + (currentMonth + 1) + "月";
-    fetch(GAS_URL + "?action=getAttendanceData&lineUid=" + encodeURIComponent(lineUid) + "&ym=" + ym)
+    fetch(GAS_URL + "/api/liff?action=getAttendanceData&lineUid=" + encodeURIComponent(lineUid) + "&ym=" + ym)
       .then(res => res.json())
       .then(data => {
         document.getElementById("loading").classList.add("hidden");
