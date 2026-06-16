@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TRB 使い方マニュアル</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(135deg, #06c755 0%, #04a344 100%);
+      color: white;
+      padding: 20px 16px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header p { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+
+    /* ナビゲーション */
+    .nav {
+      display: flex;
+      overflow-x: auto;
+      background: white;
+      border-bottom: 2px solid #e8f5e9;
+      padding: 0 8px;
+      gap: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-btn {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .nav-btn.active { color: #06c755; border-bottom-color: #06c755; }
+
+    /* コンテンツ */
+    .content { padding: 16px; max-width: 600px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ステップカード */
+    .step-card {
+      background: white;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-left: 4px solid #06c755;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .step-num {
+      background: #06c755;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-title { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+
+    /* 通常カード */
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* テキスト */
+    p { margin-bottom: 8px; }
+    ol, ul { padding-left: 20px; margin-bottom: 8px; }
+    li { margin-bottom: 6px; }
+
+    /* コードブロック（送信テキスト） */
+    .send-box {
+      background: #f0faf4;
+      border: 2px solid #06c755;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin: 10px 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #04a344;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .send-label {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: -6px;
+      margin-bottom: 8px;
+    }
+
+    /* 吹き出し（LINEメッセージ風） */
+    .bubble-wrap { margin: 10px 0; }
+    .bubble-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .bubble {
+      display: inline-block;
+      background: #e8f5e9;
+      border-radius: 0 14px 14px 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 90%;
+      white-space: pre-line;
+    }
+    .bubble.user {
+      background: #06c755;
+      color: white;
+      border-radius: 14px 0 14px 14px;
+      float: right;
+      clear: both;
+    }
+    .bubble.bot {
+      background: #f0f0f0;
+      color: #333;
+      border-radius: 0 14px 14px 14px;
+      clear: both;
+    }
+    .clearfix::after { content: ''; display: block; clear: both; }
+
+    /* 注意・ポイント */
+    .note {
+      background: #fff8e1;
+      border-left: 4px solid #ffc107;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin: 10px 0;
+      color: #5d4037;
+    }
+    .note strong { color: #e65100; }
+
+    .tip {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin: 10px 0;
+      color: #0d47a1;
+    }
+
+    /* テーブル */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+    th { background: #06c755; color: white; padding: 8px 10px; text-align: left; font-weight: 600; }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f9f9f9; }
+
+    /* FAQ */
+    .faq-item {
+      background: white;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .faq-q {
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      color: #1a1a1a;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .faq-q::after { content: '▼'; font-size: 11px; color: #06c755; flex-shrink: 0; transition: transform 0.2s; }
+    .faq-q.open::after { transform: rotate(180deg); }
+    .faq-a {
+      display: none;
+      padding: 0 16px 14px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.7;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 12px;
+    }
+
+    /* アイコン付き操作一覧 */
+    .action-list { list-style: none; padding: 0; }
+    .action-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .action-item:last-child { border-bottom: none; }
+    .action-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      width: 36px;
+      text-align: center;
+    }
+    .action-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+    .action-text span { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📖 TRB 使い方マニュアル</h1>
+  <p>Tokyo Rental Bicycle スタッフ向け</p>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showSection('start', this)">はじめに</button>
+  <button class="nav-btn" onclick="showSection('clock', this)">打刻</button>
+  <button class="nav-btn" onclick="showSection('report', this)">日報</button>
+  <button class="nav-btn" onclick="showSection('shift', this)">シフト</button>
+  <button class="nav-btn" onclick="showSection('check', this)">勤怠確認</button>
+  <button class="nav-btn" onclick="showSection('other', this)">その他</button>
+  <button class="nav-btn" onclick="showSection('faq', this)">FAQ</button>
+</div>
+
+<div class="content">
+
+  <!-- はじめに -->
+  <div class="section active" id="sec-start">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">名前と役職を登録する</div>
+      </div>
+      <p>初めて利用するときは、まず登録が必要です。</p>
+      <div class="send-box">登録</div>
+      <div class="send-label">↑ このテキストをトーク画面に送信</div>
+      <p>案内メッセージが届いたら、<strong>お名前</strong>を入力して送信してください。</p>
+      <div class="send-box">山田 太郎（お名前を入力）</div>
+      <div class="send-label">↑ フルネームで送信</div>
+      <p>続いて<strong>役職</strong>を番号で選んで送信してください。</p>
+      <div class="send-box">1（メインドライバー）または 2（サブドライバー）</div>
+      <div class="send-label">↑ 「1」か「2」を送信</div>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">システムからの返信</div>
+        <div class="bubble bot">【登録完了】
+お名前：山田 太郎
+役職：メインドライバー
+
+登録が完了しました！
+メニューから打刻を開始してください。</div>
+      </div>
+      <div class="note">
+        <strong>※ 時給は管理者が設定します。</strong>登録後に管理者へお知らせください。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📱 このシステムでできること</div>
+      <ul class="action-list">
+        <li class="action-item">
+          <div class="action-icon">📍</div>
+          <div class="action-text">
+            <strong>出勤・退勤打刻</strong>
+            <span>位置情報を送信するだけで打刻完了</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📝</div>
+          <div class="action-text">
+            <strong>日報入力</strong>
+            <span>業務内容・台数・特記事項をLINEで報告</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📅</div>
+          <div class="action-text">
+            <strong>シフト希望提出</strong>
+            <span>カレンダーから希望日を選んで提出</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📊</div>
+          <div class="action-text">
+            <strong>勤怠確認</strong>
+            <span>今月の出勤記録・給与目安を確認</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- 打刻 -->
+  <div class="section" id="sec-clock">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">出勤打刻</div>
+      </div>
+      <p>出勤時は<strong>位置情報を送信</strong>してください。</p>
+      <ol>
+        <li>トーク画面左下の「<strong>＋</strong>」ボタンをタップ</li>
+        <li>「<strong>位置情報</strong>」をタップ</li>
+        <li>現在地が表示されたら「<strong>送信</strong>」をタップ</li>
+      </ol>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">打刻完了メッセージ</div>
+        <div class="bubble bot">《出勤》山田 太郎さん
+打刻時刻：09:00
+見なし時刻：09:00（前後30分見なし）
+交通費：500円 ✅</div>
+      </div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">退勤打刻</div>
+      </div>
+      <p>退勤時も<strong>同じ手順で位置情報を送信</strong>してください。</p>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">打刻完了メッセージ</div>
+        <div class="bubble bot">《退勤》山田 太郎さん
+打刻時刻：18:15
+見なし時刻：18:30（前後30分見なし）
+実労働：8時間30分（休憩1時間自動控除）
+本日の給与目安：○○円
+
+退勤しました。「日報」ボタンから日報を入力してください。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⏰ 打刻の丸め処理について</div>
+      <p>打刻時刻は<strong>30分単位</strong>で自動的に丸められます。</p>
+      <table>
+        <tr><th>実際の時刻</th><th>見なし時刻</th><th>方向</th></tr>
+        <tr><td>9:05 出勤</td><td>9:00</td><td>切り捨て（有利）</td></tr>
+        <tr><td>9:20 出勤</td><td>9:00</td><td>切り捨て（有利）</td></tr>
+        <tr><td>18:10 退勤</td><td>18:30</td><td>切り上げ（有利）</td></tr>
+        <tr><td>18:45 退勤</td><td>19:00</td><td>切り上げ（有利）</td></tr>
+      </table>
+      <div class="note">休憩時間（60分）は自動的に控除されます。</div>
+    </div>
+
+  </div>
+
+  <!-- 日報 -->
+  <div class="section" id="sec-report">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">日報を開始する</div>
+      </div>
+      <p>退勤後、トーク画面に「<strong>日報</strong>」と送信します。</p>
+      <div class="send-box">日報</div>
+      <div class="send-label">↑ このテキストを送信</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">業務内容を入力する</div>
+      </div>
+      <p>本日の主な業務内容を入力して送信します。</p>
+      <div class="send-box">ツアー運搬</div>
+      <div class="send-label">↑ 例：ツアー運搬 / レンタル運搬 / 両方 / その他</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">台数を入力する</div>
+      </div>
+      <p>運搬した自転車の台数を入力して送信します。</p>
+      <div class="send-box">10台</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">特記事項を入力する</div>
+      </div>
+      <p>申し送り事項があれば入力します。なければ「<strong>なし</strong>」と送信します。</p>
+      <div class="send-box">なし</div>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">保存完了メッセージ</div>
+        <div class="bubble bot">【日報を保存しました】
+業務内容：ツアー運搬
+台数：10台
+特記事項：なし
+
+お疲れ様でした！</div>
+      </div>
+    </div>
+
+    <div class="tip">途中でやめたい場合は「<strong>キャンセル</strong>」と送信してください。</div>
+
+  </div>
+
+  <!-- シフト -->
+  <div class="section" id="sec-shift">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">シフト提出画面を開く</div>
+      </div>
+      <p>トーク画面下部のメニューから「<strong>シフト提出</strong>」ボタンをタップします。</p>
+      <div class="note">メニューが表示されていない場合は、トーク画面左下のメニューアイコンをタップしてください。</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">希望を入力する</div>
+      </div>
+      <p>カレンダーから日付を選択し、シフト希望を選びます。</p>
+      <table>
+        <tr><th>選択肢</th><th>意味</th></tr>
+        <tr><td>フル</td><td>終日出勤可能</td></tr>
+        <tr><td>半休</td><td>半日のみ出勤可能</td></tr>
+        <tr><td>不可</td><td>出勤不可</td></tr>
+      </table>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">保存する</div>
+      </div>
+      <p>入力が終わったら「<strong>保存する</strong>」ボタンをタップします。</p>
+      <div class="tip">一度提出したシフトは再度提出することで上書き更新できます。</div>
+    </div>
+
+  </div>
+
+  <!-- 勤怠確認 -->
+  <div class="section" id="sec-check">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">勤怠確認画面を開く</div>
+      </div>
+      <p>トーク画面下部のメニューから「<strong>勤怠確認</strong>」ボタンをタップします。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 確認できる内容</div>
+      <ul class="action-list">
+        <li class="action-item">
+          <div class="action-icon">📅</div>
+          <div class="action-text">
+            <strong>今日の打刻状況</strong>
+            <span>出勤・退勤時刻の確認</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📈</div>
+          <div class="action-text">
+            <strong>月間サマリー</strong>
+            <span>出勤日数・総労働時間・給与目安</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📋</div>
+          <div class="action-text">
+            <strong>日別記録</strong>
+            <span>各日の出退勤・労働時間・日給の詳細</span>
+          </div>
+        </li>
+        <li class="action-item">
+          <div class="action-icon">📅</div>
+          <div class="action-text">
+            <strong>シフト希望</strong>
+            <span>提出済みのシフト希望の確認</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- その他 -->
+  <div class="section" id="sec-other">
+
+    <div class="card">
+      <div class="card-title">📋 テキストで送信できる操作一覧</div>
+      <table>
+        <tr><th>送信テキスト</th><th>内容</th></tr>
+        <tr><td><strong>登録</strong></td><td>名前・役職の（再）登録</td></tr>
+        <tr><td><strong>日報</strong></td><td>日報入力を開始</td></tr>
+        <tr><td><strong>遅刻申告</strong></td><td>遅刻ペナルティ（-500円）を記録</td></tr>
+        <tr><td><strong>雨天補償申請</strong></td><td>雨天補償（+3,000円）を記録</td></tr>
+        <tr><td><strong>キャンセル</strong></td><td>途中の操作をキャンセルして最初に戻る</td></tr>
+        <tr><td><strong>マニュアル</strong></td><td>このマニュアルを表示</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 給与計算のしくみ</div>
+      <table>
+        <tr><th>項目</th><th>内容</th></tr>
+        <tr><td>基本給</td><td>実労働時間 × 時給</td></tr>
+        <tr><td>交通費</td><td>500円（毎回自動加算）</td></tr>
+        <tr><td>雨天補償</td><td>+3,000円（申請時）</td></tr>
+        <tr><td>遅刻ペナルティ</td><td>-500円（申告時）</td></tr>
+        <tr><td>休憩控除</td><td>60分を自動控除</td></tr>
+      </table>
+      <div class="note">給与目安は参考値です。確定額は管理者にご確認ください。</div>
+    </div>
+
+  </div>
+
+  <!-- FAQ -->
+  <div class="section" id="sec-faq">
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">打刻時刻が実際の時刻と違う</div>
+      <div class="faq-a">打刻時刻は30分単位で自動的に丸められます。出勤は切り捨て、退勤は切り上げになるため、スタッフに有利な方向で計算されます。これは就業規則に基づく仕様です。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">「日報」と送信しても反応がない</div>
+      <div class="faq-a">「キャンセル」と送信してから、もう一度「日報」と送信してください。前の操作が途中で止まっている可能性があります。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">名前を間違えて登録してしまった</div>
+      <div class="faq-a">「登録」と送信すると、名前と役職を再登録できます。何度でも上書き登録が可能です。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">出勤打刻したのにメッセージが来ない</div>
+      <div class="faq-a">位置情報の送信が正しく行われなかった可能性があります。もう一度「＋」→「位置情報」の手順で送信してください。それでも解決しない場合は管理者にご連絡ください。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">退勤打刻を忘れた</div>
+      <div class="faq-a">管理者にご連絡ください。Supabaseのデータベースから直接修正することができます。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">給与目安が0円になっている</div>
+      <div class="faq-a">時給がまだ設定されていない可能性があります。管理者に時給設定を依頼してください。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">シフト希望を提出したが変更したい</div>
+      <div class="faq-a">再度シフト提出画面を開いて、変更したい日付を選び直して保存してください。上書き更新されます。</div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+
+<script>
+  function showSection(name, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toggleFaq(el) {
+    const answer = el.nextElementSibling;
+    const isOpen = answer.style.display === 'block';
+    // 全部閉じる
+    document.querySelectorAll('.faq-a').forEach(a => a.style.display = 'none');
+    document.querySelectorAll('.faq-q').forEach(q => q.classList.remove('open'));
+    // クリックしたものを開く（既に開いていたら閉じたまま）
+    if (!isOpen) {
+      answer.style.display = 'block';
+      el.classList.add('open');
+    }
+  }
+</script>
+</body>
+</html>
