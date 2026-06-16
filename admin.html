@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRB 管理者ダッシュボード</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', 'Hiragino Sans', sans-serif; background: #f0f2f5; color: #333; }
+
+    /* ログイン画面 */
+    #loginScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .login-box {
+      background: white; border-radius: 16px; padding: 40px; width: 360px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+    }
+    .login-box h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 8px; }
+    .login-box p { color: #666; font-size: 13px; margin-bottom: 28px; }
+    .login-box input {
+      width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px;
+      font-size: 15px; margin-bottom: 16px; outline: none; transition: border-color 0.2s;
+    }
+    .login-box input:focus { border-color: #0f3460; }
+    .login-box button {
+      width: 100%; padding: 13px; background: #0f3460; color: white;
+      border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-box button:hover { background: #16213e; }
+    .login-error { color: #e53935; font-size: 13px; margin-top: 8px; }
+
+    /* メイン画面 */
+    #mainScreen { display: none; }
+    .header {
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      color: white; padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header h1 { font-size: 18px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+
+    /* タブ */
+    .tabs {
+      background: white; border-bottom: 2px solid #e0e0e0;
+      display: flex; overflow-x: auto; padding: 0 16px;
+    }
+    .tab {
+      padding: 14px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
+      color: #666; border-bottom: 3px solid transparent; white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: #0f3460; }
+    .tab.active { color: #0f3460; border-bottom-color: #0f3460; font-weight: 700; }
+
+    /* コンテンツ */
+    .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* カード */
+    .card {
+      background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 16px; font-weight: 700; color: #1a1a2e;
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f0f2f5;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* 月選択 */
+    .month-selector {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .month-selector label { font-size: 14px; font-weight: 600; color: #555; }
+    .month-selector input[type="month"] {
+      padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; cursor: pointer;
+    }
+    .month-selector input[type="month"]:focus { border-color: #0f3460; }
+    .btn {
+      padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 14px; font-weight: 600; transition: all 0.2s;
+    }
+    .btn-primary { background: #0f3460; color: white; }
+    .btn-primary:hover { background: #16213e; }
+    .btn-success { background: #2e7d32; color: white; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-warning { background: #e65100; color: white; }
+    .btn-warning:hover { background: #bf360c; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+
+    /* テーブル */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #1a1a2e; color: white; padding: 10px 12px;
+      text-align: left; font-weight: 600; white-space: nowrap;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #f0f2f5; white-space: nowrap; }
+    tr:hover td { background: #f8f9fa; }
+    tr:last-child td { border-bottom: none; }
+
+    /* サマリーカード */
+    .summary-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
+      margin-bottom: 20px;
+    }
+    .summary-card {
+      background: linear-gradient(135deg, #0f3460, #16213e);
+      color: white; border-radius: 10px; padding: 16px; text-align: center;
+    }
+    .summary-card .val { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .summary-card .lbl { font-size: 12px; opacity: 0.8; }
+
+    /* 時給入力 */
+    .wage-input {
+      width: 90px; padding: 5px 8px; border: 2px solid #e0e0e0; border-radius: 6px;
+      font-size: 13px; text-align: right; outline: none;
+    }
+    .wage-input:focus { border-color: #0f3460; }
+    .saved-badge {
+      display: inline-block; background: #e8f5e9; color: #2e7d32;
+      padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    }
+
+    /* ローディング */
+    .loading {
+      text-align: center; padding: 40px; color: #999; font-size: 14px;
+    }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid #e0e0e0; border-top-color: #0f3460;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* バッジ */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-main { background: #e3f2fd; color: #1565c0; }
+    .badge-sub { background: #f3e5f5; color: #6a1b9a; }
+    .badge-shift-full { background: #e8f5e9; color: #2e7d32; }
+    .badge-shift-half { background: #fff8e1; color: #f57f17; }
+    .badge-shift-off { background: #ffebee; color: #c62828; }
+
+    /* ステータス */
+    .status-ok { color: #2e7d32; font-weight: 600; }
+    .status-ng { color: #c62828; font-weight: 600; }
+
+    /* アラート */
+    .alert {
+      padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+    }
+    .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #1565c0; }
+    .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #2e7d32; }
+    .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #c62828; }
+
+    /* レスポンシブ */
+    @media (max-width: 600px) {
+      .content { padding: 12px; }
+      .card { padding: 14px; }
+      .tab { padding: 12px 14px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>🔐 TRB 管理者</h1>
+    <p>ダッシュボードにログインしてください</p>
+    <input type="password" id="passwordInput" placeholder="管理者パスワード" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">ログイン</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="mainScreen">
+  <div class="header">
+    <h1>📊 TRB 管理者ダッシュボード</h1>
+    <div class="header-right">
+      <span id="headerMonth" style="font-size:13px;opacity:0.8;"></span>
+      <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('staff')">👥 スタッフ管理</div>
+    <div class="tab" onclick="switchTab('attendance')">⏰ 勤怠一覧</div>
+    <div class="tab" onclick="switchTab('monthly')">📈 月次レポート</div>
+    <div class="tab" onclick="switchTab('shifts')">📅 シフト希望</div>
+    <div class="tab" onclick="switchTab('reports')">📝 日報一覧</div>
+  </div>
+
+  <div class="content">
+
+    <!-- スタッフ管理タブ -->
+    <div class="tab-content active" id="tab-staff">
+      <div class="card">
+        <div class="card-title">👥 スタッフ一覧・時給設定</div>
+        <div class="alert alert-info">時給を変更して「保存」ボタンを押してください。変更は即時反映されます。</div>
+        <div id="staffLoading" class="loading"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap" id="staffTableWrap" style="display:none;">
+          <table id="staffTable">
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th>役職</th>
+                <th>時給（円）</th>
+                <th>状態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="staffTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 勤怠一覧タブ -->
+    <div class="tab-content" id="tab-attendance">
+      <div class="month-selector">
+        <label>対象月：</label>
+        <input type="month" id="attMonth">
+        <button class="btn btn-primary" onclick="loadAttendance()">表示</button>
+        <button class="btn btn-success" onclick="exportAttendanceCSV()">📥 CSV出力</button>
+      </div>
+      <div id="attSummary" class="summary-grid" style="display:none;"></div>
+      <div class="card">
+        <div class="card-title">⏰ 勤怠記録</div>
+        <div id="attLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap">
+          <table id="attTable">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>名前</th>
+                <th>役職</th>
+                <th>出勤</th>
+                <th>退勤</th>
+                <th>実労働</th>
+                <th>時給</th>
+                <th>基本給</th>
+                <th>遅刻</th>
+                <th>雨天</th>
+                <th>交通費</th>
+                <th>日給計</th>
+              </tr>
+            </thead>
+            <tbody id="attTableBody">
+              <tr><td colspan="12" class="loading">月を選択して「表示」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 月次レポートタブ -->
+    <div class="tab-content" id="tab-monthly">
+      <div class="month-selector">
+        <label>対象月：</label>
+        <input type="month" id="monthlyMonth">
+        <button class="btn btn-primary" onclick="loadMonthlySummary()">表示</button>
+        <button class="btn btn-success" onclick="exportMonthlyCSV()">📥 CSV出力</button>
+      </div>
+      <div id="monthlySummaryCards" class="summary-grid" style="display:none;"></div>
+      <div class="card">
+        <div class="card-title">📈 スタッフ別月次集計</div>
+        <div id="monthlyLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap">
+          <table id="monthlyTable">
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th>役職</th>
+                <th>出勤日数</th>
+                <th>総労働時間</th>
+                <th>時給</th>
+                <th>基本給合計</th>
+                <th>遅刻合計</th>
+                <th>雨天合計</th>
+                <th>交通費合計</th>
+                <th>月給合計</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyTableBody">
+              <tr><td colspan="10" class="loading">月を選択して「表示」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- シフト希望タブ -->
+    <div class="tab-content" id="tab-shifts">
+      <div class="month-selector">
+        <label>対象月：</label>
+        <input type="month" id="shiftMonth">
+        <button class="btn btn-primary" onclick="loadShifts()">表示</button>
+        <button class="btn btn-success" onclick="exportShiftsCSV()">📥 CSV出力</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 シフト希望一覧</div>
+        <div id="shiftLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap">
+          <table id="shiftTable">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>名前</th>
+                <th>シフト希望</th>
+              </tr>
+            </thead>
+            <tbody id="shiftTableBody">
+              <tr><td colspan="3" class="loading">月を選択して「表示」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日報一覧タブ -->
+    <div class="tab-content" id="tab-reports">
+      <div class="month-selector">
+        <label>対象月：</label>
+        <input type="month" id="reportMonth">
+        <button class="btn btn-primary" onclick="loadReports()">表示</button>
+        <button class="btn btn-success" onclick="exportReportsCSV()">📥 CSV出力</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📝 日報一覧</div>
+        <div id="reportLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap">
+          <table id="reportTable">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>名前</th>
+                <th>業務内容</th>
+                <th>台数</th>
+                <th>特記事項</th>
+                <th>送信日時</th>
+              </tr>
+            </thead>
+            <tbody id="reportTableBody">
+              <tr><td colspan="6" class="loading">月を選択して「表示」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /mainScreen -->
+
+<script>
+  const API_BASE = 'https://trb-backend.vercel.app';
+  let adminPassword = '';
+  let staffData = [];
+  let attData = [];
+  let monthlyData = [];
+  let shiftData = [];
+  let reportData = [];
+
+  // --- ログイン ---
+  function doLogin() {
+    const pw = document.getElementById('passwordInput').value.trim();
+    if (!pw) { document.getElementById('loginError').textContent = 'パスワードを入力してください'; return; }
+    adminPassword = pw;
+    // APIで認証確認
+    fetch(`${API_BASE}/api/admin/users?adminPassword=${encodeURIComponent(pw)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainScreen').style.display = 'block';
+          initDashboard();
+        } else {
+          document.getElementById('loginError').textContent = 'パスワードが違います';
+          adminPassword = '';
+        }
+      })
+      .catch(() => {
+        document.getElementById('loginError').textContent = 'サーバーに接続できません';
+        adminPassword = '';
+      });
+  }
+
+  function doLogout() {
+    adminPassword = '';
+    document.getElementById('mainScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('passwordInput').value = '';
+  }
+
+  // --- 初期化 ---
+  function initDashboard() {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    ['attMonth','monthlyMonth','shiftMonth','reportMonth'].forEach(id => {
+      document.getElementById(id).value = ym;
+    });
+    document.getElementById('headerMonth').textContent = `${now.getFullYear()}年${now.getMonth()+1}月`;
+    loadStaff();
+  }
+
+  // --- タブ切替 ---
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(`tab-${name}`).classList.add('active');
+  }
+
+  // --- API呼び出しヘルパー ---
+  async function apiGet(path) {
+    const sep = path.includes('?') ? '&' : '?';
+    const r = await fetch(`${API_BASE}${path}${sep}adminPassword=${encodeURIComponent(adminPassword)}`);
+    return r.json();
+  }
+  async function apiPost(path, body) {
+    const r = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+      body: JSON.stringify(body)
+    });
+    return r.json();
+  }
+
+  // --- スタッフ管理 ---
+  async function loadStaff() {
+    document.getElementById('staffLoading').style.display = 'block';
+    document.getElementById('staffTableWrap').style.display = 'none';
+    const d = await apiGet('/api/admin/users');
+    document.getElementById('staffLoading').style.display = 'none';
+    if (!d.success) { alert('スタッフ取得失敗: ' + d.error); return; }
+    staffData = d.users || [];
+    renderStaffTable();
+    document.getElementById('staffTableWrap').style.display = 'block';
+  }
+
+  function renderStaffTable() {
+    const tbody = document.getElementById('staffTableBody');
+    if (!staffData.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">スタッフが登録されていません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = staffData.map(u => {
+      const roleClass = u.role && u.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const stateLabel = u.state ? `<span style="color:#e65100;font-size:12px;">${u.state}</span>` : '<span class="status-ok">正常</span>';
+      return `<tr>
+        <td><strong>${u.name || '<span style="color:#999;">未設定</span>'}</strong></td>
+        <td><span class="badge ${roleClass}">${u.role || '-'}</span></td>
+        <td>
+          <input class="wage-input" type="number" id="wage_${u.line_uid}" value="${u.hourly_wage || 0}" min="0" max="9999" step="10">
+          <span style="font-size:12px;color:#666;"> 円/時</span>
+        </td>
+        <td>${stateLabel}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="saveWage('${u.line_uid}')">保存</button>
+          <span class="saved-badge" id="saved_${u.line_uid}" style="display:none;">✓ 保存済み</span>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function saveWage(lineUid) {
+    const val = document.getElementById(`wage_${lineUid}`).value;
+    const d = await apiPost('/api/admin/updateWage', { lineUid, hourlyWage: parseInt(val) });
+    if (d.success) {
+      const badge = document.getElementById(`saved_${lineUid}`);
+      badge.style.display = 'inline-block';
+      setTimeout(() => { badge.style.display = 'none'; }, 3000);
+    } else {
+      alert('保存失敗: ' + d.error);
+    }
+  }
+
+  // --- 勤怠一覧 ---
+  async function loadAttendance() {
+    const ym = document.getElementById('attMonth').value.replace('-','');
+    if (!ym) { alert('月を選択してください'); return; }
+    document.getElementById('attLoading').style.display = 'block';
+    document.getElementById('attSummary').style.display = 'none';
+    const d = await apiGet(`/api/admin/attendance?ym=${ym}`);
+    document.getElementById('attLoading').style.display = 'none';
+    if (!d.success) { alert('取得失敗: ' + d.error); return; }
+    attData = d.records || [];
+    renderAttTable();
+    renderAttSummary();
+  }
+
+  function renderAttTable() {
+    const tbody = document.getElementById('attTableBody');
+    if (!attData.length) {
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">データがありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = attData.map(r => {
+      const roleClass = r.role && r.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      return `<tr>
+        <td>${r.date}</td>
+        <td><strong>${r.name}</strong></td>
+        <td><span class="badge ${roleClass}">${r.role || '-'}</span></td>
+        <td class="status-ok">${r.clockIn}</td>
+        <td>${r.clockOut !== '-' ? r.clockOut : '<span style="color:#e65100;">未退勤</span>'}</td>
+        <td>${r.workHours}</td>
+        <td>${r.hourlyWage.toLocaleString()}円</td>
+        <td>${r.basePay.toLocaleString()}円</td>
+        <td>${r.penalty ? `<span class="status-ng">${r.penalty.toLocaleString()}円</span>` : '-'}</td>
+        <td>${r.rain ? `<span class="status-ok">+${r.rain.toLocaleString()}円</span>` : '-'}</td>
+        <td>${r.transport.toLocaleString()}円</td>
+        <td><strong>${r.dayPay.toLocaleString()}円</strong></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderAttSummary() {
+    const total = attData.reduce((s,r) => s + r.dayPay, 0);
+    const days = attData.filter(r => r.clockIn !== '-').length;
+    const staff = new Set(attData.map(r => r.lineUid)).size;
+    const totalMin = attData.reduce((s,r) => s + r.workMin, 0);
+    const el = document.getElementById('attSummary');
+    el.innerHTML = `
+      <div class="summary-card"><div class="val">${staff}名</div><div class="lbl">出勤スタッフ数</div></div>
+      <div class="summary-card"><div class="val">${days}日</div><div class="lbl">総出勤延べ日数</div></div>
+      <div class="summary-card"><div class="val">${Math.floor(totalMin/60)}h${totalMin%60}m</div><div class="lbl">総労働時間</div></div>
+      <div class="summary-card"><div class="val">${total.toLocaleString()}円</div><div class="lbl">人件費合計</div></div>
+    `;
+    el.style.display = 'grid';
+  }
+
+  function exportAttendanceCSV() {
+    if (!attData.length) { alert('先にデータを表示してください'); return; }
+    const headers = ['日付','名前','役職','出勤','退勤','実労働','時給','基本給','遅刻','雨天','交通費','日給計'];
+    const rows = attData.map(r => [r.date, r.name, r.role, r.clockIn, r.clockOut, r.workHours, r.hourlyWage, r.basePay, r.penalty, r.rain, r.transport, r.dayPay]);
+    downloadCSV('勤怠一覧_' + document.getElementById('attMonth').value, headers, rows);
+  }
+
+  // --- 月次レポート ---
+  async function loadMonthlySummary() {
+    const ym = document.getElementById('monthlyMonth').value.replace('-','');
+    if (!ym) { alert('月を選択してください'); return; }
+    document.getElementById('monthlyLoading').style.display = 'block';
+    document.getElementById('monthlySummaryCards').style.display = 'none';
+    const d = await apiGet(`/api/admin/monthly-summary?ym=${ym}`);
+    document.getElementById('monthlyLoading').style.display = 'none';
+    if (!d.success) { alert('取得失敗: ' + d.error); return; }
+    monthlyData = d.summary || [];
+    renderMonthlyTable();
+    renderMonthlySummaryCards();
+  }
+
+  function renderMonthlyTable() {
+    const tbody = document.getElementById('monthlyTableBody');
+    if (!monthlyData.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">データがありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = monthlyData.map(s => {
+      const roleClass = s.role && s.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      return `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td><span class="badge ${roleClass}">${s.role || '-'}</span></td>
+        <td style="text-align:center;">${s.workDays}日</td>
+        <td>${s.totalWorkHours}</td>
+        <td>${s.hourlyWage.toLocaleString()}円</td>
+        <td>${s.totalBasePay.toLocaleString()}円</td>
+        <td>${s.totalPenalty ? `<span class="status-ng">${s.totalPenalty.toLocaleString()}円</span>` : '-'}</td>
+        <td>${s.totalRain ? `<span class="status-ok">+${s.totalRain.toLocaleString()}円</span>` : '-'}</td>
+        <td>${s.totalTransport.toLocaleString()}円</td>
+        <td><strong style="font-size:15px;">${s.totalPay.toLocaleString()}円</strong></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderMonthlySummaryCards() {
+    const totalPay = monthlyData.reduce((s,r) => s + r.totalPay, 0);
+    const totalDays = monthlyData.reduce((s,r) => s + r.workDays, 0);
+    const totalMin = monthlyData.reduce((s,r) => s + r.totalWorkMin, 0);
+    const el = document.getElementById('monthlySummaryCards');
+    el.innerHTML = `
+      <div class="summary-card"><div class="val">${monthlyData.length}名</div><div class="lbl">スタッフ数</div></div>
+      <div class="summary-card"><div class="val">${totalDays}日</div><div class="lbl">総出勤延べ日数</div></div>
+      <div class="summary-card"><div class="val">${Math.floor(totalMin/60)}h${totalMin%60}m</div><div class="lbl">総労働時間</div></div>
+      <div class="summary-card"><div class="val">${totalPay.toLocaleString()}円</div><div class="lbl">月間人件費合計</div></div>
+    `;
+    el.style.display = 'grid';
+  }
+
+  function exportMonthlyCSV() {
+    if (!monthlyData.length) { alert('先にデータを表示してください'); return; }
+    const headers = ['名前','役職','出勤日数','総労働時間','時給','基本給合計','遅刻合計','雨天合計','交通費合計','月給合計'];
+    const rows = monthlyData.map(s => [s.name, s.role, s.workDays, s.totalWorkHours, s.hourlyWage, s.totalBasePay, s.totalPenalty, s.totalRain, s.totalTransport, s.totalPay]);
+    downloadCSV('月次レポート_' + document.getElementById('monthlyMonth').value, headers, rows);
+  }
+
+  // --- シフト希望 ---
+  async function loadShifts() {
+    const ym = document.getElementById('shiftMonth').value.replace('-','');
+    if (!ym) { alert('月を選択してください'); return; }
+    document.getElementById('shiftLoading').style.display = 'block';
+    const d = await apiGet(`/api/admin/shifts?ym=${ym}`);
+    document.getElementById('shiftLoading').style.display = 'none';
+    if (!d.success) { alert('取得失敗: ' + d.error); return; }
+    shiftData = d.records || [];
+    renderShiftTable();
+  }
+
+  function renderShiftTable() {
+    const tbody = document.getElementById('shiftTableBody');
+    if (!shiftData.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">データがありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = shiftData.map(r => {
+      let badgeClass = 'badge-shift-full';
+      if (r.type && r.type.includes('半')) badgeClass = 'badge-shift-half';
+      if (r.type && (r.type.includes('休') || r.type.includes('不可'))) badgeClass = 'badge-shift-off';
+      return `<tr>
+        <td>${r.date}</td>
+        <td><strong>${r.name}</strong></td>
+        <td><span class="badge ${badgeClass}">${r.type}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function exportShiftsCSV() {
+    if (!shiftData.length) { alert('先にデータを表示してください'); return; }
+    const headers = ['日付','名前','シフト希望'];
+    const rows = shiftData.map(r => [r.date, r.name, r.type]);
+    downloadCSV('シフト希望_' + document.getElementById('shiftMonth').value, headers, rows);
+  }
+
+  // --- 日報一覧 ---
+  async function loadReports() {
+    const ym = document.getElementById('reportMonth').value.replace('-','');
+    if (!ym) { alert('月を選択してください'); return; }
+    document.getElementById('reportLoading').style.display = 'block';
+    const d = await apiGet(`/api/admin/reports?ym=${ym}`);
+    document.getElementById('reportLoading').style.display = 'none';
+    if (!d.success) { alert('取得失敗: ' + d.error); return; }
+    reportData = d.records || [];
+    renderReportTable();
+  }
+
+  function renderReportTable() {
+    const tbody = document.getElementById('reportTableBody');
+    if (!reportData.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">データがありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = reportData.map(r => {
+      const dt = r.createdAt ? new Date(r.createdAt).toLocaleString('ja-JP') : '-';
+      return `<tr>
+        <td>${r.date}</td>
+        <td><strong>${r.name}</strong></td>
+        <td>${r.taskType || '-'}</td>
+        <td>${r.count || '-'}</td>
+        <td>${r.note || '-'}</td>
+        <td style="font-size:12px;color:#666;">${dt}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function exportReportsCSV() {
+    if (!reportData.length) { alert('先にデータを表示してください'); return; }
+    const headers = ['日付','名前','業務内容','台数','特記事項','送信日時'];
+    const rows = reportData.map(r => [r.date, r.name, r.taskType, r.count, r.note, r.createdAt]);
+    downloadCSV('日報一覧_' + document.getElementById('reportMonth').value, headers, rows);
+  }
+
+  // --- CSV出力共通 ---
+  function downloadCSV(filename, headers, rows) {
+    const BOM = '\uFEFF';
+    const lines = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(','))];
+    const blob = new Blob([BOM + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${filename}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
