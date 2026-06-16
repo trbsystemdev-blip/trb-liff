@@ -1,424 +1,258 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>勤怠確認</title>
-    <!-- LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f3f4f6;
-            color: #333;
-        }
-        #loading {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #06C755;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .status-present { background: #d1fae5; color: #065f46; }
-        .status-absent { background: #fee2e2; color: #991b1b; }
-        .status-break { background: #fef3c7; color: #92400e; }
-        .status-left { background: #dbeafe; color: #1e40af; }
-        
-        .tab-btn {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            border-bottom: 3px solid transparent;
-            cursor: pointer;
-            color: #6b7280;
-            transition: all 0.15s;
-        }
-        .tab-btn.active {
-            border-bottom-color: #06C755;
-            color: #06C755;
-        }
-        
-        .attendance-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .attendance-row:last-child {
-            border-bottom: none;
-        }
-        
-        .time-block {
-            display: flex;
-            gap: 12px;
-            font-size: 0.9rem;
-        }
-        .time-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .time-label {
-            font-size: 0.7rem;
-            color: #9ca3af;
-        }
-        .time-value {
-            font-weight: bold;
-            color: #111827;
-        }
-        
-        .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .summary-item {
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
-        .summary-label {
-            font-size: 0.75rem;
-            color: #6b7280;
-            margin-bottom: 4px;
-        }
-        .summary-value {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #111827;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>勤怠確認</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; background: #f5f5f5; color: #333; }
+    .header { background: #06c755; color: white; padding: 16px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .header .subtitle { font-size: 12px; font-weight: normal; margin-top: 4px; opacity: 0.9; }
+    .container { padding: 16px; max-width: 480px; margin: 0 auto; }
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .card-title { font-size: 13px; color: #888; margin-bottom: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .today-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .today-item { text-align: center; padding: 12px; background: #f8f8f8; border-radius: 8px; }
+    .today-item .label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .today-item .value { font-size: 20px; font-weight: bold; color: #333; }
+    .today-item .value.green { color: #06c755; }
+    .today-item .value.blue { color: #3498db; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .summary-item { text-align: center; padding: 10px 6px; background: #f8f8f8; border-radius: 8px; }
+    .summary-item .label { font-size: 10px; color: #888; margin-bottom: 4px; }
+    .summary-item .value { font-size: 16px; font-weight: bold; color: #333; }
+    .pay-total { background: linear-gradient(135deg, #06c755, #04a344); color: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; }
+    .pay-total .label { font-size: 13px; opacity: 0.9; margin-bottom: 4px; }
+    .pay-total .amount { font-size: 32px; font-weight: bold; }
+    .pay-total .sub { font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .month-nav button { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 8px 16px; font-size: 16px; cursor: pointer; color: #06c755; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .month-nav button:disabled { color: #ccc; cursor: not-allowed; }
+    .month-title { font-size: 18px; font-weight: bold; color: #333; }
+    .tabs { display: flex; background: white; border-radius: 12px; padding: 4px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .tab { flex: 1; padding: 10px; text-align: center; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; color: #888; transition: all 0.2s; }
+    .tab.active { background: #06c755; color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .record-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .record-item:last-child { border-bottom: none; }
+    .record-date { width: 80px; }
+    .record-date .date { font-size: 14px; font-weight: bold; }
+    .record-date .dow { font-size: 11px; color: #888; }
+    .record-times { flex: 1; }
+    .record-times .time-row { font-size: 13px; color: #555; }
+    .record-times .work-hours { font-size: 12px; color: #06c755; font-weight: bold; margin-top: 2px; }
+    .record-pay { text-align: right; font-size: 14px; font-weight: bold; color: #333; min-width: 70px; }
+    .record-badges { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+    .badge.rain { background: #cce5ff; color: #004085; }
+    .badge.late { background: #f8d7da; color: #721c24; }
+    .badge.transport { background: #d4edda; color: #155724; }
+    .shift-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .shift-item:last-child { border-bottom: none; }
+    .shift-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .shift-badge.work { background: #d4edda; color: #155724; }
+    .shift-badge.off { background: #f8d7da; color: #721c24; }
+    .loading { display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 300; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    .loading.hidden { display: none; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #06c755; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; color: #aaa; font-size: 14px; padding: 24px 0; }
+    .user-card { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .user-avatar { width: 48px; height: 48px; background: #06c755; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold; }
+    .user-name { font-size: 16px; font-weight: bold; }
+    .user-role { font-size: 12px; color: #888; }
+    .user-wage { font-size: 12px; color: #06c755; font-weight: bold; }
+  </style>
 </head>
-<body class="p-4">
-
-    <div id="loading">
-        <div class="spinner mb-4"></div>
-        <p id="loading-text" class="text-gray-600 font-bold">データ取得中...</p>
+<body>
+<div class="header">
+  勤怠確認
+  <div class="subtitle">月間の勤怠・給与を確認できます</div>
+</div>
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:#555;">データ読み込み中...</div>
+</div>
+<div class="container" id="mainContent" style="display:none;">
+  <div class="user-card">
+    <div class="user-avatar" id="userAvatar">?</div>
+    <div>
+      <div class="user-name" id="userName">読み込み中...</div>
+      <div class="user-role" id="userRole"></div>
+      <div class="user-wage" id="userWage"></div>
     </div>
-
-    <div id="app-content" style="display: none;" class="max-w-md mx-auto">
-        <header class="mb-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800">勤怠確認</h1>
-            <div class="text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm">
-                <span id="user-name">読込中...</span>
-            </div>
-        </header>
-
-        <!-- 今日の状況カード -->
-        <div class="card" id="today-card">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="font-bold text-gray-700">今日の勤怠</h2>
-                <span id="today-date" class="text-sm text-gray-500"></span>
-            </div>
-            <div id="today-status" class="text-center py-4 text-gray-400">データなし</div>
-        </div>
-
-        <!-- 月間サマリーカード -->
-        <div class="card">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="font-bold text-gray-700">今月のサマリー</h2>
-                <span id="month-display" class="text-sm text-gray-500"></span>
-            </div>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-label">出勤日数</div>
-                    <div class="summary-value" id="summary-days">-</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">総労働時間</div>
-                    <div class="summary-value" id="summary-hours">-</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">平均労働時間</div>
-                    <div class="summary-value" id="summary-avg">-</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">休憩合計</div>
-                    <div class="summary-value" id="summary-break">-</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- タブ切り替え -->
-        <div class="card p-0">
-            <div class="flex border-b">
-                <button class="tab-btn active" data-tab="attendance" onclick="switchTab('attendance')">勤怠履歴</button>
-                <button class="tab-btn" data-tab="shift" onclick="switchTab('shift')">シフト予定</button>
-            </div>
-            
-            <!-- 勤怠履歴タブ -->
-            <div id="tab-attendance" class="p-4">
-                <div id="attendance-list">
-                    <div class="text-center text-gray-400 py-4">読込中...</div>
-                </div>
-            </div>
-            
-            <!-- シフト予定タブ -->
-            <div id="tab-shift" class="p-4" style="display: none;">
-                <div id="shift-list">
-                    <div class="text-center text-gray-400 py-4">読込中...</div>
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">◀</button>
+    <span class="month-title" id="monthTitle"></span>
+    <button onclick="changeMonth(1)">▶</button>
+  </div>
+  <div class="pay-total">
+    <div class="label">今月の給与見込み</div>
+    <div class="amount" id="totalPay">¥0</div>
+    <div class="sub" id="payBreakdown"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">今月のサマリー</div>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">出勤日数</div>
+        <div class="value" id="workDays">0</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">総労働時間</div>
+        <div class="value" id="totalHours">0h</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">時給</div>
+        <div class="value" id="hourlyWage">¥0</div>
+      </div>
     </div>
+  </div>
+  <div class="card" id="todayCard" style="display:none;">
+    <div class="card-title">本日の打刻</div>
+    <div class="today-grid">
+      <div class="today-item">
+        <div class="label">出勤</div>
+        <div class="value green" id="todayIn">--:--</div>
+      </div>
+      <div class="today-item">
+        <div class="label">退勤</div>
+        <div class="value blue" id="todayOut">--:--</div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('attendance')">勤怠履歴</div>
+    <div class="tab" onclick="switchTab('shift')">シフト予定</div>
+  </div>
+  <div class="tab-content active" id="tab-attendance">
+    <div class="card">
+      <div id="attendanceList"><div class="empty-msg">勤怠データがありません</div></div>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-shift">
+    <div class="card">
+      <div id="shiftList"><div class="empty-msg">シフトデータがありません</div></div>
+    </div>
+  </div>
+</div>
+<script>
+  const LIFF_ID = "2010362932-jaznTC8h";
+  const GAS_URL = "https://trb-backend.vercel.app";
+  const DOW = ["日","月","火","水","木","金","土"];
+  let lineUid = null;
+  let currentYear = new Date().getFullYear();
+  let currentMonth = new Date().getMonth();
 
-    <script>
-        // ==========================================
-        // 設定値（デプロイ時に書き換える）
-        // ==========================================
-        const LIFF_ID = "2010362932-jaznTC8h";
-        const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxFgzaZE4ZaE2lC_n-EqKot76ix6gRC1JzcwJ4pacXV-Tc2TFVW5RxHq7XVl_Rf9TI6Sw/exec";
-        
-        // ==========================================
-        // グローバル変数
-        // ==========================================
-        let lineProfile = null;
+  liff.init({ liffId: LIFF_ID }).then(() => {
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    return liff.getProfile();
+  }).then(profile => {
+    if (!profile) return;
+    lineUid = profile.userId;
+    loadData();
+  }).catch(err => {
+    document.getElementById("loading").innerHTML = "<div style='color:red;padding:20px;'>ログインエラーが発生しました</div>";
+  });
 
-        // ==========================================
-        // 初期化処理
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // 日付の設定
-                const today = new Date();
-                const formattedDate = `${today.getMonth() + 1}月${today.getDate()}日（${'日月火水木金土'[today.getDay()]}）`;
-                const formattedMonth = `${today.getFullYear()}年${today.getMonth() + 1}月`;
-                document.getElementById('today-date').innerText = formattedDate;
-                document.getElementById('month-display').innerText = formattedMonth;
-                
-                // 1. LIFFの初期化
-                await liff.init({ liffId: LIFF_ID });
-                
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-                
-                // 2. ユーザー情報の取得
-                lineProfile = await liff.getProfile();
-                
-                // 3. GASからデータを取得
-                document.getElementById('loading-text').innerText = "勤怠データ取得中...";
-                await loadAllData();
-                
-                // 4. UIの表示
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                
-            } catch (error) {
-                console.error('Initialization failed', error);
-                document.getElementById('loading-text').innerText = "エラー: " + error.message;
-                document.getElementById('loading-text').style.color = "red";
-            }
-        });
+  function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    loadData();
+  }
 
-        // ==========================================
-        // データ取得・表示処理
-        // ==========================================
-        async function loadAllData() {
-            const lineUid = lineProfile.userId;
-            const today = new Date();
-            const ym = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-            
-            try {
-                // GASからデータを取得
-                const url = `${GAS_WEBHOOK_URL}?action=getAttendanceData&lineUid=${encodeURIComponent(lineUid)}&ym=${ym}`;
-                const response = await fetch(url, { redirect: "follow" });
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.error || "データ取得失敗");
-                }
-                
-                const data = result.data;
-                
-                // ユーザー名の設定
-                document.getElementById('user-name').innerText = data.userName || lineProfile.displayName;
-                
-                // 今日の勤怠の表示
-                renderTodayStatus(data.today);
-                
-                // 月間サマリーの表示
-                renderMonthlySummary(data.summary);
-                
-                // 勤怠履歴の表示
-                renderAttendanceList(data.records);
-                
-                // シフト予定の表示
-                renderShiftList(data.shifts);
-                
-            } catch (error) {
-                console.error('loadAllData error:', error);
-                document.getElementById('today-status').innerHTML = `<span class="text-red-500">データ取得エラー</span>`;
-                document.getElementById('attendance-list').innerHTML = `<div class="text-center text-red-400 py-4">エラー: ${error.message}</div>`;
-            }
-        }
+  function loadData() {
+    document.getElementById("loading").classList.remove("hidden");
+    document.getElementById("mainContent").style.display = "none";
+    const ym = currentYear + String(currentMonth + 1).padStart(2, "0");
+    document.getElementById("monthTitle").textContent = currentYear + "年" + (currentMonth + 1) + "月";
+    fetch(GAS_URL + "?action=getAttendanceData&lineUid=" + encodeURIComponent(lineUid) + "&ym=" + ym)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("loading").classList.add("hidden");
+        if (!data.success) { alert("データ取得エラー: " + (data.error || "不明")); return; }
+        renderData(data);
+        document.getElementById("mainContent").style.display = "block";
+      })
+      .catch(err => {
+        document.getElementById("loading").classList.add("hidden");
+        alert("通信エラーが発生しました。");
+      });
+  }
 
-        function renderTodayStatus(today) {
-            const el = document.getElementById('today-status');
-            
-            if (!today || !today.clockIn) {
-                el.innerHTML = `
-                    <div class="text-gray-400 text-center py-2">
-                        <div class="text-3xl mb-2">📋</div>
-                        <div>本日の打刻記録はありません</div>
-                    </div>`;
-                return;
-            }
-            
-            let statusBadge = '';
-            if (today.clockOut) {
-                statusBadge = `<span class="status-badge status-left">退勤済</span>`;
-            } else if (today.breakStart && !today.breakEnd) {
-                statusBadge = `<span class="status-badge status-break">休憩中</span>`;
-            } else {
-                statusBadge = `<span class="status-badge status-present">出勤中</span>`;
-            }
-            
-            el.innerHTML = `
-                <div class="flex justify-between items-center mb-3">
-                    <div>${statusBadge}</div>
-                    ${today.workHours ? `<div class="font-bold text-lg">${today.workHours}</div>` : ''}
-                </div>
-                <div class="time-block justify-center">
-                    <div class="time-item">
-                        <span class="time-label">出勤</span>
-                        <span class="time-value">${today.clockIn || '-'}</span>
-                    </div>
-                    ${today.breakStart ? `
-                    <div class="time-item">
-                        <span class="time-label">休憩開始</span>
-                        <span class="time-value">${today.breakStart}</span>
-                    </div>` : ''}
-                    ${today.breakEnd ? `
-                    <div class="time-item">
-                        <span class="time-label">休憩終了</span>
-                        <span class="time-value">${today.breakEnd}</span>
-                    </div>` : ''}
-                    <div class="time-item">
-                        <span class="time-label">退勤</span>
-                        <span class="time-value">${today.clockOut || '-'}</span>
-                    </div>
-                </div>`;
-        }
+  function renderData(data) {
+    // ユーザー情報
+    document.getElementById("userName").textContent = data.userName || "";
+    document.getElementById("userRole").textContent = data.role || "";
+    document.getElementById("userWage").textContent = data.hourlyWage ? "時給 ¥" + data.hourlyWage.toLocaleString() : "";
+    const initial = (data.userName || "?").charAt(0);
+    document.getElementById("userAvatar").textContent = initial;
 
-        function renderMonthlySummary(summary) {
-            if (!summary) return;
-            document.getElementById('summary-days').innerText = summary.days ? `${summary.days}日` : '-';
-            document.getElementById('summary-hours').innerText = summary.totalHours || '-';
-            document.getElementById('summary-avg').innerText = summary.avgHours || '-';
-            document.getElementById('summary-break').innerText = summary.totalBreak || '-';
-        }
+    // サマリー
+    const s = data.summary || {};
+    document.getElementById("workDays").textContent = (s.workDays || 0) + "日";
+    document.getElementById("totalHours").textContent = s.totalWorkHours || "0時間0分";
+    document.getElementById("hourlyWage").textContent = data.hourlyWage ? "¥" + data.hourlyWage.toLocaleString() : "未設定";
+    document.getElementById("totalPay").textContent = "¥" + (s.totalPay || 0).toLocaleString();
+    document.getElementById("payBreakdown").textContent = "交通費・各種手当含む";
 
-        function renderAttendanceList(records) {
-            const el = document.getElementById('attendance-list');
-            
-            if (!records || records.length === 0) {
-                el.innerHTML = '<div class="text-center text-gray-400 py-4">今月の記録はありません</div>';
-                return;
-            }
-            
-            const html = records.map(r => {
-                const dateObj = new Date(r.date);
-                const dayLabel = `${dateObj.getMonth() + 1}/${dateObj.getDate()}（${'日月火水木金土'[dateObj.getDay()]}）`;
-                
-                return `
-                <div class="attendance-row">
-                    <div>
-                        <div class="font-bold text-sm">${dayLabel}</div>
-                        ${r.workHours ? `<div class="text-xs text-gray-500">実働 ${r.workHours}</div>` : ''}
-                    </div>
-                    <div class="time-block">
-                        <div class="time-item">
-                            <span class="time-label">出勤</span>
-                            <span class="time-value text-sm">${r.clockIn || '-'}</span>
-                        </div>
-                        <div class="time-item">
-                            <span class="time-label">退勤</span>
-                            <span class="time-value text-sm">${r.clockOut || '-'}</span>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-            
-            el.innerHTML = html;
-        }
+    // 今日の打刻
+    if (data.today && data.today.clockIn) {
+      document.getElementById("todayCard").style.display = "block";
+      document.getElementById("todayIn").textContent = data.today.clockIn || "--:--";
+      document.getElementById("todayOut").textContent = data.today.clockOut || "勤務中";
+    }
 
-        function renderShiftList(shifts) {
-            const el = document.getElementById('shift-list');
-            
-            if (!shifts || shifts.length === 0) {
-                el.innerHTML = '<div class="text-center text-gray-400 py-4">今月のシフト予定はありません</div>';
-                return;
-            }
-            
-            const html = shifts.map(s => {
-                const dateObj = new Date(s.date);
-                const dayLabel = `${dateObj.getMonth() + 1}/${dateObj.getDate()}（${'日月火水木金土'[dateObj.getDay()]}）`;
-                
-                let timeBadgeClass = 'bg-blue-100 text-blue-800';
-                if (s.time && s.time.includes('午前')) timeBadgeClass = 'bg-yellow-100 text-yellow-800';
-                if (s.time && s.time.includes('午後')) timeBadgeClass = 'bg-orange-100 text-orange-800';
-                if (s.time && s.time.includes('休み')) timeBadgeClass = 'bg-red-100 text-red-800';
-                
-                return `
-                <div class="attendance-row">
-                    <div class="font-bold text-sm">${dayLabel}</div>
-                    <div>
-                        <span class="status-badge ${timeBadgeClass}">${s.time || '-'}</span>
-                        ${s.status === '確定' ? '<span class="ml-1 text-xs text-green-600 font-bold">✓確定</span>' : ''}
-                    </div>
-                </div>`;
-            }).join('');
-            
-            el.innerHTML = html;
-        }
+    // 勤怠履歴
+    const attList = document.getElementById("attendanceList");
+    if (!data.records || data.records.length === 0) {
+      attList.innerHTML = "<div class='empty-msg'>勤怠データがありません</div>";
+    } else {
+      attList.innerHTML = data.records.map(r => {
+        const d = new Date(r.date + "T00:00:00");
+        const badges = [];
+        if (r.rain > 0) badges.push("<span class='badge rain'>雨天+¥" + r.rain.toLocaleString() + "</span>");
+        if (r.penalty < 0) badges.push("<span class='badge late'>遅刻" + r.penalty.toLocaleString() + "円</span>");
+        if (r.transport > 0) badges.push("<span class='badge transport'>交通費+¥" + r.transport + "</span>");
+        return "<div class='record-item'>" +
+          "<div class='record-date'><div class='date'>" + (d.getMonth()+1) + "/" + d.getDate() + "</div><div class='dow'>" + DOW[d.getDay()] + "曜日</div></div>" +
+          "<div class='record-times'><div class='time-row'>" + (r.clockIn || "--:--") + " 〜 " + (r.clockOut || "勤務中") + "</div>" +
+          "<div class='work-hours'>" + (r.workHours || "-") + "（休憩1h控除）</div>" +
+          (badges.length > 0 ? "<div class='record-badges'>" + badges.join("") + "</div>" : "") +
+          "</div>" +
+          "<div class='record-pay'>¥" + (r.dayPay || 0).toLocaleString() + "</div>" +
+          "</div>";
+      }).join("");
+    }
 
-        // ==========================================
-        // タブ切り替え
-        // ==========================================
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
-            });
-            document.getElementById('tab-attendance').style.display = tabName === 'attendance' ? 'block' : 'none';
-            document.getElementById('tab-shift').style.display = tabName === 'shift' ? 'block' : 'none';
-        }
-    </script>
+    // シフト予定
+    const shiftList = document.getElementById("shiftList");
+    if (!data.shifts || data.shifts.length === 0) {
+      shiftList.innerHTML = "<div class='empty-msg'>シフトデータがありません</div>";
+    } else {
+      shiftList.innerHTML = data.shifts.map(s => {
+        const d = new Date(s.date + "T00:00:00");
+        const isWork = s.type === "出勤希望";
+        return "<div class='shift-item'>" +
+          "<span>" + (d.getMonth()+1) + "月" + d.getDate() + "日（" + DOW[d.getDay()] + "）</span>" +
+          "<span class='shift-badge " + (isWork ? "work" : "off") + "'>" + s.type + "</span>" +
+          "</div>";
+      }).join("");
+    }
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach((t, i) => {
+      t.classList.toggle("active", (i === 0 && name === "attendance") || (i === 1 && name === "shift"));
+    });
+    document.getElementById("tab-attendance").classList.toggle("active", name === "attendance");
+    document.getElementById("tab-shift").classList.toggle("active", name === "shift");
+  }
+</script>
 </body>
 </html>
