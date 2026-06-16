@@ -280,7 +280,7 @@
         // ==========================================
         async function fetchUserInfo(lineUid) {
             try {
-                const url = `${GAS_WEBHOOK_URL}?action=getUserInfo&lineUid=${encodeURIComponent(lineUid)}`;
+                const url = `${GAS_WEBHOOK_URL}/api/liff?action=getUserInfo&lineUid=${encodeURIComponent(lineUid)}`;
                 const response = await fetch(url, { redirect: "follow" });
                 const result = await response.json();
                 if (result.success) {
@@ -385,11 +385,10 @@
             document.getElementById('loading-text').innerText = "日報を保存中...";
             
             try {
-                const response = await fetch(GAS_WEBHOOK_URL, {
+                const response = await fetch(GAS_WEBHOOK_URL + '/api/liff', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload),
-                    redirect: "follow"
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
                 
                 const result = await response.json();
