@@ -90,7 +90,7 @@
     <div id="shiftSummary"></div>
   </div>
   <button class="submit-btn" id="submitBtn" onclick="submitShifts()" disabled>
-    送信する
+    シフト希望を送信する
   </button>
 </div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
@@ -234,10 +234,10 @@
     const entries = Object.entries(shiftData).map(([date, type]) => ({ date, type }));
     if (entries.length === 0) { alert("シフトを1件以上設定してください。"); return; }
     document.getElementById("loading").classList.add("active");
-    fetch(GAS_URL, {
+    fetch(GAS_URL + "/api/liff", {
       method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ source: "liff", action: "saveShifts", lineUid: lineUid, entries: entries })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "saveShifts", lineUid: lineUid, entries: entries })
     }).then(res => res.json()).then(data => {
       document.getElementById("loading").classList.remove("active");
       if (data.success) {
