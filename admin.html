@@ -506,7 +506,7 @@
     const r = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ ...body, adminPassword })
     });
     return r.json();
   }
