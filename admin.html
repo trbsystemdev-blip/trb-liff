@@ -277,6 +277,7 @@
                 <th>雨天</th>
                 <th>交通費</th>
                 <th>日給計</th>
+                <th>修正</th>
               </tr>
             </thead>
             <tbody id="attTableBody">
@@ -636,19 +637,20 @@
     }
     tbody.innerHTML = attData.map(r => {
       const roleClass = r.role && r.role.includes('メイン') ? 'badge-main' : 'badge-sub';
-      return `<tr>
+      return `<tr id="att-row-${r.id}">
         <td>${r.date}</td>
         <td><strong>${r.name}</strong></td>
         <td><span class="badge ${roleClass}">${r.role || '-'}</span></td>
-        <td class="status-ok">${r.clockIn}</td>
-        <td>${r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>'}</td>
-        <td>${r.workHours}</td>
+        <td class="status-ok" id="att-in-${r.id}">${r.clockIn}</td>
+        <td id="att-out-${r.id}">${r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>'}</td>
+        <td id="att-work-${r.id}">${r.workHours}</td>
         <td>${r.hourlyWage.toLocaleString()}円</td>
-        <td>${r.basePay.toLocaleString()}円</td>
+        <td id="att-pay-${r.id}">${r.basePay.toLocaleString()}円</td>
         <td>${r.penalty ? `<span class="status-ng">${r.penalty.toLocaleString()}円</span>` : '-'}</td>
         <td>${r.rain ? `<span class="status-ok">+${r.rain.toLocaleString()}円</span>` : '-'}</td>
         <td>${r.transport.toLocaleString()}円</td>
         <td><strong>${r.dayPay.toLocaleString()}円</strong></td>
+        <td><button class="btn btn-sm" style="background:#6c757d;color:#fff;padding:4px 8px;font-size:11px;" onclick="openEditModal('${r.id}','${r.clockIn}','${r.clockOut !== '-' ? r.clockOut : ''}','${r.date}','${r.name}')">✏️ 修正</button></td>
       </tr>`;
     }).join('');
   }
@@ -784,6 +786,46 @@
     }
   }
 
+  // --- 勤怠修正モーダル ---
+  let editTargetId = null;
+
+  function openEditModal(id, clockIn, clockOut, date, name) {
+    editTargetId = id;
+    document.getElementById('editModalTitle').textContent = `${date} ${name}さんの打刻修正`;
+    document.getElementById('editClockIn').value = clockIn !== '-' ? clockIn : '';
+    document.getElementById('editClockOut').value = clockOut || '';
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    editTargetId = null;
+  }
+
+  async function saveAttendanceEdit() {
+    if (!editTargetId) return;
+    const clockIn = document.getElementById('editClockIn').value.trim();
+    const clockOut = document.getElementById('editClockOut').value.trim();
+    if (!clockIn && !clockOut) { alert('出勤または退勤時刻を入力してください'); return; }
+    const btn = document.getElementById('editSaveBtn');
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+    const d = await apiPost('/api/admin/updateAttendance', {
+      attendanceId: editTargetId,
+      clockIn: clockIn || undefined,
+      clockOut: clockOut || undefined
+    });
+    btn.disabled = false;
+    btn.textContent = '保存';
+    if (d.success) {
+      alert('修正しました。\n丸め後の出勤: ' + (d.updates.clock_in || '変更なし') + '\n丸め後の退勤: ' + (d.updates.clock_out || '変更なし'));
+      closeEditModal();
+      loadAttendance();
+    } else {
+      alert('修正失敗: ' + d.error);
+    }
+  }
+
   // --- シフト希望 ---
   async function loadShifts() {
     const ym = document.getElementById('shiftMonth').value.replace('-','');
@@ -870,5 +912,25 @@
     URL.revokeObjectURL(url);
   }
 </script>
+<!-- 打刻修正モーダル -->
+<div id="editModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <h3 id="editModalTitle" style="margin:0 0 20px;font-size:16px;color:#1a2340;"></h3>
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px;">出勤時刻（実打刻時刻を入力）</label>
+      <input type="time" id="editClockIn" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;">
+      <div style="font-size:11px;color:#888;margin-top:4px;">丸め処理：入力時刻を切り上げて保存します</div>
+    </div>
+    <div style="margin-bottom:24px;">
+      <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px;">退勤時刻（実打刻時刻を入力）</label>
+      <input type="time" id="editClockOut" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box;">
+      <div style="font-size:11px;color:#888;margin-top:4px;">丸め処理：入力時刻を切り捨てて保存します</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="editSaveBtn" onclick="saveAttendanceEdit()" style="flex:1;padding:12px;background:#1a2340;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">保存</button>
+      <button onclick="closeEditModal()" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:none;border-radius:8px;font-size:14px;cursor:pointer;">キャンセル</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
