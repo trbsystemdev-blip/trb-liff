@@ -97,7 +97,9 @@
     .btn-success:hover { background: #1b5e20; }
     .btn-warning { background: #e65100; color: white; }
     .btn-warning:hover { background: #bf360c; }
-    .btn-sm { padding: 5px 12px; font-size: 13px; }
+    .btn-danger { background: #c62828; color: white; }
+    .btn-danger:hover { background: #b71c1c; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
 
     /* テーブル */
     .table-wrap { overflow-x: auto; }
@@ -128,8 +130,9 @@
       font-size: 13px; text-align: right; outline: none;
     }
     .wage-input:focus { border-color: #0f3460; }
+    .wage-input.saved { border-color: #2e7d32; background: #f1f8e9; }
     .saved-badge {
-      display: inline-block; background: #e8f5e9; color: #2e7d32;
+      display: none; background: #e8f5e9; color: #2e7d32;
       padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
     }
 
@@ -155,10 +158,12 @@
     .badge-shift-full { background: #e8f5e9; color: #2e7d32; }
     .badge-shift-half { background: #fff8e1; color: #f57f17; }
     .badge-shift-off { background: #ffebee; color: #c62828; }
+    .badge-pending { background: #fff3e0; color: #e65100; }
 
     /* ステータス */
     .status-ok { color: #2e7d32; font-weight: 600; }
     .status-ng { color: #c62828; font-weight: 600; }
+    .status-warn { color: #e65100; font-weight: 600; }
 
     /* アラート */
     .alert {
@@ -167,6 +172,7 @@
     .alert-info { background: #e3f2fd; color: #1565c0; border-left: 4px solid #1565c0; }
     .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #2e7d32; }
     .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #c62828; }
+    .alert-warn { background: #fff3e0; color: #e65100; border-left: 4px solid #e65100; }
 
     /* レスポンシブ */
     @media (max-width: 600px) {
@@ -203,6 +209,7 @@
     <div class="tab active" onclick="switchTab('staff')">👥 スタッフ管理</div>
     <div class="tab" onclick="switchTab('attendance')">⏰ 勤怠一覧</div>
     <div class="tab" onclick="switchTab('monthly')">📈 月次レポート</div>
+    <div class="tab" onclick="switchTab('pending')">🔔 退勤承認</div>
     <div class="tab" onclick="switchTab('shifts')">📅 シフト希望</div>
     <div class="tab" onclick="switchTab('reports')">📝 日報一覧</div>
   </div>
@@ -216,7 +223,7 @@
         <div class="alert alert-info">時給を変更して「保存」ボタンを押してください。変更は即時反映されます。</div>
         <div id="staffLoading" class="loading"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap" id="staffTableWrap" style="display:none;">
-          <table id="staffTable">
+          <table>
             <thead>
               <tr>
                 <th>名前</th>
@@ -229,6 +236,16 @@
             <tbody id="staffTableBody"></tbody>
           </table>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔄 勤務時間の再計算</div>
+        <div class="alert alert-info">時給を変更した後、過去の勤務時間データが正しく計算されていない場合に使用してください。</div>
+        <div class="month-selector">
+          <label>対象月：</label>
+          <input type="month" id="recalcMonth">
+          <button class="btn btn-warning" onclick="doRecalculate()">再計算実行</button>
+        </div>
+        <div id="recalcResult" style="font-size:13px;color:#2e7d32;display:none;"></div>
       </div>
     </div>
 
@@ -245,7 +262,7 @@
         <div class="card-title">⏰ 勤怠記録</div>
         <div id="attLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap">
-          <table id="attTable">
+          <table>
             <thead>
               <tr>
                 <th>日付</th>
@@ -283,7 +300,7 @@
         <div class="card-title">📈 スタッフ別月次集計</div>
         <div id="monthlyLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap">
-          <table id="monthlyTable">
+          <table>
             <thead>
               <tr>
                 <th>名前</th>
@@ -306,6 +323,33 @@
       </div>
     </div>
 
+    <!-- 退勤承認タブ -->
+    <div class="tab-content" id="tab-pending">
+      <div class="card">
+        <div class="card-title">🔔 退勤後申告 承認待ち一覧</div>
+        <div class="alert alert-warn">スタッフが「退勤申告 HH:MM」で申告した退勤時刻です。内容を確認して承認または却下してください。</div>
+        <button class="btn btn-primary" onclick="loadPending()" style="margin-bottom:16px;">更新</button>
+        <div id="pendingLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>名前</th>
+                <th>出勤時刻</th>
+                <th>申告退勤時刻</th>
+                <th>申告理由</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="pendingTableBody">
+              <tr><td colspan="6" class="loading">「更新」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- シフト希望タブ -->
     <div class="tab-content" id="tab-shifts">
       <div class="month-selector">
@@ -318,7 +362,7 @@
         <div class="card-title">📅 シフト希望一覧</div>
         <div id="shiftLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap">
-          <table id="shiftTable">
+          <table>
             <thead>
               <tr>
                 <th>日付</th>
@@ -346,7 +390,7 @@
         <div class="card-title">📝 日報一覧</div>
         <div id="reportLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap">
-          <table id="reportTable">
+          <table>
             <thead>
               <tr>
                 <th>日付</th>
@@ -377,53 +421,77 @@
   let shiftData = [];
   let reportData = [];
 
-  // --- ログイン ---
+  // --- ログイン（sessionStorageでページリロード後も維持） ---
   function doLogin() {
     const pw = document.getElementById('passwordInput').value.trim();
     if (!pw) { document.getElementById('loginError').textContent = 'パスワードを入力してください'; return; }
-    adminPassword = pw;
-    // APIで認証確認
     fetch(`${API_BASE}/api/admin/users?adminPassword=${encodeURIComponent(pw)}`)
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          document.getElementById('loginScreen').style.display = 'none';
-          document.getElementById('mainScreen').style.display = 'block';
-          initDashboard();
+          adminPassword = pw;
+          sessionStorage.setItem('adminPw', pw);
+          showMain();
         } else {
           document.getElementById('loginError').textContent = 'パスワードが違います';
-          adminPassword = '';
         }
       })
       .catch(() => {
         document.getElementById('loginError').textContent = 'サーバーに接続できません';
-        adminPassword = '';
       });
   }
 
   function doLogout() {
     adminPassword = '';
+    sessionStorage.removeItem('adminPw');
     document.getElementById('mainScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('passwordInput').value = '';
   }
 
+  function showMain() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainScreen').style.display = 'block';
+    initDashboard();
+  }
+
+  // ページ読み込み時にsessionStorageを確認して自動ログイン
+  window.addEventListener('load', () => {
+    const saved = sessionStorage.getItem('adminPw');
+    if (saved) {
+      fetch(`${API_BASE}/api/admin/users?adminPassword=${encodeURIComponent(saved)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            adminPassword = saved;
+            showMain();
+          } else {
+            sessionStorage.removeItem('adminPw');
+          }
+        })
+        .catch(() => {});
+    }
+  });
+
   // --- 初期化 ---
   function initDashboard() {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    ['attMonth','monthlyMonth','shiftMonth','reportMonth'].forEach(id => {
-      document.getElementById(id).value = ym;
+    ['attMonth','monthlyMonth','shiftMonth','reportMonth','recalcMonth'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = ym;
     });
     document.getElementById('headerMonth').textContent = `${now.getFullYear()}年${now.getMonth()+1}月`;
     loadStaff();
+    loadPending();
   }
 
   // --- タブ切替 ---
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    const clickedTab = event.target;
+    clickedTab.classList.add('active');
     document.getElementById(`tab-${name}`).classList.add('active');
   }
 
@@ -460,34 +528,89 @@
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">スタッフが登録されていません</td></tr>';
       return;
     }
-    tbody.innerHTML = staffData.map(u => {
+    tbody.innerHTML = staffData.map((u, idx) => {
       const roleClass = u.role && u.role.includes('メイン') ? 'badge-main' : 'badge-sub';
-      const stateLabel = u.state ? `<span style="color:#e65100;font-size:12px;">${u.state}</span>` : '<span class="status-ok">正常</span>';
+      const hasState = u.state && u.state !== '';
+      const stateLabel = hasState
+        ? `<span class="status-warn">${u.state}</span>`
+        : '<span class="status-ok">正常</span>';
+      const resetBtn = hasState
+        ? `<button class="btn btn-warning btn-sm" data-idx="${idx}" onclick="resetState(this)">stateリセット</button>`
+        : '';
       return `<tr>
         <td><strong>${u.name || '<span style="color:#999;">未設定</span>'}</strong></td>
         <td><span class="badge ${roleClass}">${u.role || '-'}</span></td>
         <td>
-          <input class="wage-input" type="number" id="wage_${u.line_uid}" value="${u.hourly_wage || 0}" min="0" max="9999" step="10">
+          <input class="wage-input" type="number" id="wageInput_${idx}" data-uid="${u.line_uid}" value="${u.hourly_wage || 0}" min="0" max="99999" step="10">
           <span style="font-size:12px;color:#666;"> 円/時</span>
         </td>
         <td>${stateLabel}</td>
-        <td>
-          <button class="btn btn-primary btn-sm" onclick="saveWage('${u.line_uid}')">保存</button>
-          <span class="saved-badge" id="saved_${u.line_uid}" style="display:none;">✓ 保存済み</span>
+        <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" data-idx="${idx}" onclick="saveWage(this)">保存</button>
+          <span class="saved-badge" id="savedBadge_${idx}">✓ 保存済み</span>
+          ${resetBtn}
         </td>
       </tr>`;
     }).join('');
   }
 
-  async function saveWage(lineUid) {
-    const val = document.getElementById(`wage_${lineUid}`).value;
-    const d = await apiPost('/api/admin/updateWage', { lineUid, hourlyWage: parseInt(val) });
+  async function saveWage(btn) {
+    const idx = btn.getAttribute('data-idx');
+    const input = document.getElementById(`wageInput_${idx}`);
+    const lineUid = input.getAttribute('data-uid');
+    const val = parseInt(input.value, 10);
+    if (isNaN(val) || val < 0) { alert('正しい時給を入力してください'); return; }
+
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+    try {
+      const d = await apiPost('/api/admin/updateWage', { lineUid: lineUid, hourlyWage: val });
+      if (d.success) {
+        input.classList.add('saved');
+        const badge = document.getElementById(`savedBadge_${idx}`);
+        badge.style.display = 'inline-block';
+        setTimeout(() => {
+          badge.style.display = 'none';
+          input.classList.remove('saved');
+        }, 3000);
+        // staffDataも更新
+        staffData[idx].hourly_wage = val;
+      } else {
+        alert('保存失敗: ' + (d.error || '不明なエラー'));
+      }
+    } catch(e) {
+      alert('通信エラー: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '保存';
+    }
+  }
+
+  async function resetState(btn) {
+    const idx = btn.getAttribute('data-idx');
+    const u = staffData[idx];
+    if (!confirm(`${u.name || u.line_uid} さんのstateをリセットしますか？\n現在のstate: ${u.state}`)) return;
+    const d = await apiPost('/api/admin/resetState', { lineUid: u.line_uid });
     if (d.success) {
-      const badge = document.getElementById(`saved_${lineUid}`);
-      badge.style.display = 'inline-block';
-      setTimeout(() => { badge.style.display = 'none'; }, 3000);
+      alert('stateをリセットしました。スタッフはメニューから操作できるようになります。');
+      await loadStaff();
     } else {
-      alert('保存失敗: ' + d.error);
+      alert('リセット失敗: ' + d.error);
+    }
+  }
+
+  async function doRecalculate() {
+    const ym = document.getElementById('recalcMonth').value.replace('-','');
+    if (!ym) { alert('月を選択してください'); return; }
+    if (!confirm(`${ym.substring(0,4)}年${parseInt(ym.substring(4,6))}月の勤務時間を再計算します。よろしいですか？`)) return;
+    const d = await apiPost('/api/admin/recalculate', { ym });
+    const el = document.getElementById('recalcResult');
+    if (d.success) {
+      el.textContent = `✓ ${d.updated}件のレコードを再計算しました。`;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 5000);
+    } else {
+      alert('再計算失敗: ' + d.error);
     }
   }
 
@@ -518,7 +641,7 @@
         <td><strong>${r.name}</strong></td>
         <td><span class="badge ${roleClass}">${r.role || '-'}</span></td>
         <td class="status-ok">${r.clockIn}</td>
-        <td>${r.clockOut !== '-' ? r.clockOut : '<span style="color:#e65100;">未退勤</span>'}</td>
+        <td>${r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>'}</td>
         <td>${r.workHours}</td>
         <td>${r.hourlyWage.toLocaleString()}円</td>
         <td>${r.basePay.toLocaleString()}円</td>
@@ -608,6 +731,57 @@
     const headers = ['名前','役職','出勤日数','総労働時間','時給','基本給合計','遅刻合計','雨天合計','交通費合計','月給合計'];
     const rows = monthlyData.map(s => [s.name, s.role, s.workDays, s.totalWorkHours, s.hourlyWage, s.totalBasePay, s.totalPenalty, s.totalRain, s.totalTransport, s.totalPay]);
     downloadCSV('月次レポート_' + document.getElementById('monthlyMonth').value, headers, rows);
+  }
+
+  // --- 退勤承認 ---
+  async function loadPending() {
+    document.getElementById('pendingLoading').style.display = 'block';
+    const d = await apiGet('/api/admin/pending');
+    document.getElementById('pendingLoading').style.display = 'none';
+    if (!d.success) {
+      // pending_clock_outカラムが未作成の場合は案内を表示
+      document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>`;
+      return;
+    }
+    const records = d.records || [];
+    const tbody = document.getElementById('pendingTableBody');
+    if (!records.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = records.map(r => `<tr>
+      <td>${r.date}</td>
+      <td><strong>${r.name}</strong></td>
+      <td class="status-ok">${r.clockIn}</td>
+      <td class="status-warn"><strong>${r.pendingClockOut}</strong></td>
+      <td><span class="badge badge-pending">${r.pendingReason || '後申告'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-success btn-sm" onclick="approveClockOut('${r.id}')">✓ 承認</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectClockOut('${r.id}')">✗ 却下</button>
+      </td>
+    </tr>`).join('');
+  }
+
+  async function approveClockOut(attendanceId) {
+    if (!confirm('この退勤申告を承認しますか？\n承認するとスタッフにLINEで通知されます。')) return;
+    const d = await apiPost('/api/admin/approveClockOut', { attendanceId });
+    if (d.success) {
+      alert(`承認しました。実労働：${Math.floor(d.workMin/60)}時間${d.workMin%60}分`);
+      loadPending();
+    } else {
+      alert('承認失敗: ' + d.error);
+    }
+  }
+
+  async function rejectClockOut(attendanceId) {
+    if (!confirm('この退勤申告を却下しますか？\n却下するとスタッフにLINEで通知されます。')) return;
+    const d = await apiPost('/api/admin/rejectClockOut', { attendanceId });
+    if (d.success) {
+      alert('却下しました。');
+      loadPending();
+    } else {
+      alert('却下失敗: ' + d.error);
+    }
   }
 
   // --- シフト希望 ---
