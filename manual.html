@@ -352,16 +352,48 @@
 
     <div class="step-card">
       <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">出勤ボタンを押し忘れた場合</div>
+      </div>
+      <p>出勤打刻を忘れた場合は、公式LINEに以下の形式で送信してください。</p>
+      <div class="send-box">出勤申告 09:00</div>
+      <div class="send-label">↑ 「出勤申告」の後に実際に出勤した時刻をHH:MM形式で送信</div>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">システムからの返信</div>
+        <div class="bubble bot">出勤後申告（09:00）を受付けました。
+管理者の承認待ちとなります。承認後に出勤時刻が確定されます。</div>
+      </div>
+      <div class="note"><strong>注意：</strong>「出勤申告 9時」「出勤忘れました」などの自然文は受付けられません。必ず「出勤申告 HH:MM」の形式で送信してください。</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">退勤ボタンを押し忘れた場合</div>
+      </div>
+      <p>退勤打刻を忘れた場合は、公式LINEに以下の形式で送信してください。</p>
+      <div class="send-box">退勤申告 18:00</div>
+      <div class="send-label">↑ 「退勤申告」の後に実際に退勤した時刻をHH:MM形式で送信</div>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">システムからの返信</div>
+        <div class="bubble bot">退勤後申告（18:00）を受付けました。
+管理者の承認待ちとなります。承認後に退勤時刻が確定されます。</div>
+      </div>
+      <div class="note"><strong>注意：</strong>「退勤申告 18時」「退勤忘れました」などの自然文は受付けられません。必ず「退勤申告 HH:MM」の形式で送信してください。</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
         <div class="step-num">2</div>
         <div class="step-title">退勤打刻</div>
       </div>
-      <p>退勤時も<strong>同じ手順で位置情報を送信</strong>してください。</p>
+      <p>退勤時も<strong>同じ手順で位置情報を送信</strong>してください。（打刻忘れの場合は下のステップを参照）</p>
       <div class="bubble-wrap clearfix">
         <div class="bubble-label">打刻完了メッセージ</div>
         <div class="bubble bot">《退勤》山田 太郎さん
 打刻時刻：18:15
-見なし時刻：18:30（前後30分見なし）
-実労働：8時間30分（休憩1時間自動控除）
+見なし時刻：18:00（切り捨て）
+実労働：8時間0分（休憩⁠1時間自動控除）
 本日の給与目安：○○円
 
 退勤しました。「日報」ボタンから日報を入力してください。</div>
@@ -373,10 +405,10 @@
       <p>打刻時刻は<strong>30分単位</strong>で自動的に丸められます。</p>
       <table>
         <tr><th>実際の時刻</th><th>見なし時刻</th><th>方向</th></tr>
-        <tr><td>9:05 出勤</td><td>9:00</td><td>切り捨て（有利）</td></tr>
-        <tr><td>9:20 出勤</td><td>9:00</td><td>切り捨て（有利）</td></tr>
-        <tr><td>18:10 退勤</td><td>18:30</td><td>切り上げ（有利）</td></tr>
-        <tr><td>18:45 退勤</td><td>19:00</td><td>切り上げ（有利）</td></tr>
+        <tr><td>8:46 出勤</td><td>9:00</td><td>切り上げ（遅刻側負担）</td></tr>
+        <tr><td>9:05 出勤</td><td>9:30</td><td>切り上げ（遅刻側負担）</td></tr>
+        <tr><td>18:10 退勤</td><td>18:00</td><td>切り捨て（早退側負担）</td></tr>
+        <tr><td>18:45 退勤</td><td>18:30</td><td>切り捨て（早退側負担）</td></tr>
       </table>
       <div class="note">休憩時間（60分）は自動的に控除されます。</div>
     </div>
@@ -530,8 +562,9 @@
         <tr><th>送信テキスト</th><th>内容</th></tr>
         <tr><td><strong>登録</strong></td><td>名前・役職の（再）登録</td></tr>
         <tr><td><strong>日報</strong></td><td>日報入力を開始</td></tr>
-        <tr><td><strong>遅刻申告</strong></td><td>遅刻ペナルティ（-500円）を記録</td></tr>
-        <tr><td><strong>雨天補償申請</strong></td><td>雨天補償（+3,000円）を記録</td></tr>
+        <tr><td><strong>出勤申告 HH:MM</strong></td><td>出勤打刻忘れの後申告（承認待ち）</td></tr>
+        <tr><td><strong>退勤申告 HH:MM</strong></td><td>退勤打刻忘れの後申告（承認待ち）</td></tr>
+        <tr><td><strong>リザーブ申請</strong></td><td>業務中止日の手当申請（+3,000円）</td></tr>
         <tr><td><strong>キャンセル</strong></td><td>途中の操作をキャンセルして最初に戻る</td></tr>
         <tr><td><strong>マニュアル</strong></td><td>このマニュアルを表示</td></tr>
       </table>
@@ -541,10 +574,9 @@
       <div class="card-title">💰 給与計算のしくみ</div>
       <table>
         <tr><th>項目</th><th>内容</th></tr>
-        <tr><td>基本給</td><td>実労働時間 × 時給</td></tr>
+        <tr><td>基本給</td><td>実労働時間 &times; 時給</td></tr>
         <tr><td>交通費</td><td>500円（毎回自動加算）</td></tr>
-        <tr><td>雨天補償</td><td>+3,000円（申請時）</td></tr>
-        <tr><td>遅刻ペナルティ</td><td>-500円（申告時）</td></tr>
+        <tr><td>リザーブ手当</td><td>+3,000円（業務中止日に申請）</td></tr>
         <tr><td>休憩控除</td><td>60分を自動控除</td></tr>
       </table>
       <div class="note">給与目安は参考値です。確定額は管理者にご確認ください。</div>
@@ -576,8 +608,16 @@
     </div>
 
     <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">出勤打刻を忘れた</div>
+      <div class="faq-a">公式LINEに「出勤申告 09:00」の形式で送信してください。管理者が承認すると出勤時刻が確定されます。
+「出勤忘れました」などの自然文は受付けられません。必ず「出勤申告 HH:MM」の形式で送信してください。</div>
+    </div>
+
+    <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">退勤打刻を忘れた</div>
-      <div class="faq-a">管理者にご連絡ください。Supabaseのデータベースから直接修正することができます。</div>
+      <div class="faq-a">公式LINEに「退勤申告 18:00」の形式で送信してください。管理者が承認すると退勤時刻が確定されます。
+「退勤忘れました」などの自然文は受付けられません。必ず「退勤申告 HH:MM」の形式で送信してください。
+却下された場合は再度申請できます。</div>
     </div>
 
     <div class="faq-item">
