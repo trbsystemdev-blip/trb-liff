@@ -273,15 +273,14 @@
                 <th>実労働</th>
                 <th>時給</th>
                 <th>基本給</th>
-                <th>遅刻</th>
-                <th>雨天</th>
+                <th>リザーブ</th>
                 <th>交通費</th>
                 <th>日給計</th>
                 <th>修正</th>
               </tr>
             </thead>
             <tbody id="attTableBody">
-              <tr><td colspan="12" class="loading">月を選択して「表示」を押してください</td></tr>
+              <tr><td colspan="11" class="loading">月を選択して「表示」を押してください</td></tr>
             </tbody>
           </table>
         </div>
@@ -310,14 +309,13 @@
                 <th>総労働時間</th>
                 <th>時給</th>
                 <th>基本給合計</th>
-                <th>遅刻合計</th>
-                <th>雨天合計</th>
+                <th>リザーブ合計</th>
                 <th>交通費合計</th>
                 <th>月給合計</th>
               </tr>
             </thead>
             <tbody id="monthlyTableBody">
-              <tr><td colspan="10" class="loading">月を選択して「表示」を押してください</td></tr>
+              <tr><td colspan="9" class="loading">月を選択して「表示」を押してください</td></tr>
             </tbody>
           </table>
         </div>
@@ -327,8 +325,8 @@
     <!-- 退勤承認タブ -->
     <div class="tab-content" id="tab-pending">
       <div class="card">
-        <div class="card-title">🔔 退勤後申告 承認待ち一覧</div>
-        <div class="alert alert-warn">スタッフが「退勤申告 HH:MM」で申告した退勤時刻です。内容を確認して承認または却下してください。</div>
+        <div class="card-title">🔔 打刻後申告 承認待ち一覧</div>
+        <div class="alert alert-warn">「出勤申告 HH:MM」または「退勤申告 HH:MM」で申告された内容です。内容を確認して承認または却下してください。</div>
         <button class="btn btn-primary" onclick="loadPending()" style="margin-bottom:16px;">更新</button>
         <div id="pendingLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap">
@@ -337,9 +335,9 @@
               <tr>
                 <th>日付</th>
                 <th>名前</th>
-                <th>出勤時刻</th>
-                <th>申告退勤時刻</th>
-                <th>申告理由</th>
+                <th>種別</th>
+                <th>申告時刻</th>
+                <th>現在の記録</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -632,7 +630,7 @@
   function renderAttTable() {
     const tbody = document.getElementById('attTableBody');
     if (!attData.length) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">データがありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;">データがありません</td></tr>';
       return;
     }
     tbody.innerHTML = attData.map(r => {
@@ -646,7 +644,6 @@
         <td id="att-work-${r.id}">${r.workHours}</td>
         <td>${r.hourlyWage.toLocaleString()}円</td>
         <td id="att-pay-${r.id}">${r.basePay.toLocaleString()}円</td>
-        <td>${r.penalty ? `<span class="status-ng">${r.penalty.toLocaleString()}円</span>` : '-'}</td>
         <td>${r.rain ? `<span class="status-ok">+${r.rain.toLocaleString()}円</span>` : '-'}</td>
         <td>${r.transport.toLocaleString()}円</td>
         <td><strong>${r.dayPay.toLocaleString()}円</strong></td>
@@ -672,8 +669,8 @@
 
   function exportAttendanceCSV() {
     if (!attData.length) { alert('先にデータを表示してください'); return; }
-    const headers = ['日付','名前','役職','出勤','退勤','実労働','時給','基本給','遅刻','雨天','交通費','日給計'];
-    const rows = attData.map(r => [r.date, r.name, r.role, r.clockIn, r.clockOut, r.workHours, r.hourlyWage, r.basePay, r.penalty, r.rain, r.transport, r.dayPay]);
+    const headers = ['日付','名前','役職','出勤','退勤','実労働','時給','基本給','リザーブ','交通費','日給計'];
+    const rows = attData.map(r => [r.date, r.name, r.role, r.clockIn, r.clockOut, r.workHours, r.hourlyWage, r.basePay, r.rain, r.transport, r.dayPay]);
     downloadCSV('勤怠一覧_' + document.getElementById('attMonth').value, headers, rows);
   }
 
@@ -694,7 +691,7 @@
   function renderMonthlyTable() {
     const tbody = document.getElementById('monthlyTableBody');
     if (!monthlyData.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">データがありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">データがありません</td></tr>';
       return;
     }
     tbody.innerHTML = monthlyData.map(s => {
@@ -706,7 +703,6 @@
         <td>${s.totalWorkHours}</td>
         <td>${s.hourlyWage.toLocaleString()}円</td>
         <td>${s.totalBasePay.toLocaleString()}円</td>
-        <td>${s.totalPenalty ? `<span class="status-ng">${s.totalPenalty.toLocaleString()}円</span>` : '-'}</td>
         <td>${s.totalRain ? `<span class="status-ok">+${s.totalRain.toLocaleString()}円</span>` : '-'}</td>
         <td>${s.totalTransport.toLocaleString()}円</td>
         <td><strong style="font-size:15px;">${s.totalPay.toLocaleString()}円</strong></td>
@@ -730,8 +726,8 @@
 
   function exportMonthlyCSV() {
     if (!monthlyData.length) { alert('先にデータを表示してください'); return; }
-    const headers = ['名前','役職','出勤日数','総労働時間','時給','基本給合計','遅刻合計','雨天合計','交通費合計','月給合計'];
-    const rows = monthlyData.map(s => [s.name, s.role, s.workDays, s.totalWorkHours, s.hourlyWage, s.totalBasePay, s.totalPenalty, s.totalRain, s.totalTransport, s.totalPay]);
+    const headers = ['名前','役職','出勤日数','総労働時間','時給','基本給合計','リザーブ合計','交通費合計','月給合計'];
+    const rows = monthlyData.map(s => [s.name, s.role, s.workDays, s.totalWorkHours, s.hourlyWage, s.totalBasePay, s.totalRain, s.totalTransport, s.totalPay]);
     downloadCSV('月次レポート_' + document.getElementById('monthlyMonth').value, headers, rows);
   }
 
@@ -751,17 +747,52 @@
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>';
       return;
     }
-    tbody.innerHTML = records.map(r => `<tr>
-      <td>${r.date}</td>
-      <td><strong>${r.name}</strong></td>
-      <td class="status-ok">${r.clockIn}</td>
-      <td class="status-warn"><strong>${r.pendingClockOut}</strong></td>
-      <td><span class="badge badge-pending">${r.pendingReason || '後申告'}</span></td>
-      <td style="display:flex;gap:6px;">
-        <button class="btn btn-success btn-sm" onclick="approveClockOut('${r.id}')">✓ 承認</button>
-        <button class="btn btn-danger btn-sm" onclick="rejectClockOut('${r.id}')">✗ 却下</button>
-      </td>
-    </tr>`).join('');
+    tbody.innerHTML = records.map(r => {
+      const isClockIn = r.type === 'clockIn';
+      const badge = isClockIn
+        ? `<span class="badge" style="background:#e3f2fd;color:#1565c0;">🟦 出勤申告</span>`
+        : `<span class="badge badge-pending">🟧 退勤申告</span>`;
+      const pendingTime = isClockIn ? r.pendingClockIn : r.pendingClockOut;
+      const currentRecord = isClockIn
+        ? `出勤なし / 退勤: ${r.clockOut !== '-' ? r.clockOut : '未退勤'}`
+        : `出勤: ${r.clockIn} / 退勤なし`;
+      const approveBtn = isClockIn
+        ? `<button class="btn btn-success btn-sm" onclick="approveClockIn('${r.id}')">✓ 承認</button>`
+        : `<button class="btn btn-success btn-sm" onclick="approveClockOut('${r.id}')">✓ 承認</button>`;
+      const rejectBtn = isClockIn
+        ? `<button class="btn btn-danger btn-sm" onclick="rejectClockIn('${r.id}')">✗ 却下</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="rejectClockOut('${r.id}')">✗ 却下</button>`;
+      return `<tr>
+        <td>${r.date}</td>
+        <td><strong>${r.name}</strong></td>
+        <td>${badge}</td>
+        <td class="status-warn"><strong>${pendingTime}</strong></td>
+        <td style="font-size:12px;color:#666;">${currentRecord}</td>
+        <td style="display:flex;gap:6px;">${approveBtn}${rejectBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function approveClockIn(attendanceId) {
+    if (!confirm('この出勤申告を承認しますか？\n承認するとスタッフにLINEで通知されます。')) return;
+    const d = await apiPost('/api/admin/approveClockIn', { attendanceId });
+    if (d.success) {
+      alert(`承認しました。見なし出勤時刻：${d.clockIn}`);
+      loadPending();
+    } else {
+      alert('承認失敗: ' + d.error);
+    }
+  }
+
+  async function rejectClockIn(attendanceId) {
+    if (!confirm('この出勤申告を却下しますか？\n却下するとスタッフにLINEで通知されます。')) return;
+    const d = await apiPost('/api/admin/rejectClockIn', { attendanceId });
+    if (d.success) {
+      alert('却下しました。');
+      loadPending();
+    } else {
+      alert('却下失敗: ' + d.error);
+    }
   }
 
   async function approveClockOut(attendanceId) {
