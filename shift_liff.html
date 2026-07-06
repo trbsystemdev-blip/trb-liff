@@ -128,9 +128,8 @@
     lineUid = profile.userId;
     userName = profile.displayName;
     document.getElementById("userInfo").textContent = "👤 " + userName;
-    const next = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    currentYear = next.getFullYear();
-    currentMonth = next.getMonth();
+    currentYear = today.getFullYear();
+    currentMonth = today.getMonth();
     renderCalendar();
   }).catch(err => {
     document.getElementById("userInfo").textContent = "⚠️ ログインエラー";
@@ -138,7 +137,7 @@
 
   function renderCalendar() {
     document.getElementById("monthTitle").textContent = currentYear + "年" + (currentMonth + 1) + "月";
-    const minDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const minDate = new Date(today.getFullYear(), today.getMonth(), 1);
     const maxDate = new Date(today.getFullYear(), today.getMonth() + 3, 0);
     document.getElementById("prevMonth").disabled = new Date(currentYear, currentMonth, 1) <= minDate;
     document.getElementById("nextMonth").disabled = new Date(currentYear, currentMonth + 1, 0) >= maxDate;
