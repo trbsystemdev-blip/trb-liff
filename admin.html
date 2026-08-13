@@ -635,26 +635,30 @@
     }
     tbody.innerHTML = attData.map(r => {
       const roleClass = r.role && r.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const reserveOnly = r.reserveOnly === true;
+      const clockInDisplay = reserveOnly ? '<span class="status-warn">リザーブのみ</span>' : r.clockIn;
+      const clockOutDisplay = reserveOnly ? '-' : (r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>');
+      const editLabel = reserveOnly ? '勤務に変更' : '✏️ 修正';
       return `<tr id="att-row-${r.id}">
         <td>${r.date}</td>
         <td><strong>${r.name}</strong></td>
         <td><span class="badge ${roleClass}">${r.role || '-'}</span></td>
-        <td class="status-ok" id="att-in-${r.id}">${r.clockIn}</td>
-        <td id="att-out-${r.id}">${r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>'}</td>
+        <td class="status-ok" id="att-in-${r.id}">${clockInDisplay}</td>
+        <td id="att-out-${r.id}">${clockOutDisplay}</td>
         <td id="att-work-${r.id}">${r.workHours}</td>
         <td>${r.hourlyWage.toLocaleString()}円</td>
         <td id="att-pay-${r.id}">${r.basePay.toLocaleString()}円</td>
         <td>${r.rain ? `<span class="status-ok">+${r.rain.toLocaleString()}円</span>` : '-'}</td>
         <td>${r.transport.toLocaleString()}円</td>
         <td><strong>${r.dayPay.toLocaleString()}円</strong></td>
-        <td><button class="btn btn-sm" style="background:#6c757d;color:#fff;padding:4px 8px;font-size:11px;" onclick="openEditModal('${r.id}','${r.clockIn}','${r.clockOut !== '-' ? r.clockOut : ''}','${r.date}','${r.name}')">✏️ 修正</button></td>
+        <td><button class="btn btn-sm" style="background:#6c757d;color:#fff;padding:4px 8px;font-size:11px;" onclick="openEditModal('${r.id}','${reserveOnly ? '' : r.clockIn}','${reserveOnly ? '' : (r.clockOut !== '-' ? r.clockOut : '')}','${r.date}','${r.name}')">${editLabel}</button></td>
       </tr>`;
     }).join('');
   }
 
   function renderAttSummary() {
     const total = attData.reduce((s,r) => s + r.dayPay, 0);
-    const days = attData.filter(r => r.clockIn !== '-').length;
+    const days = attData.filter(r => !r.reserveOnly && r.clockIn !== '-').length;
     const staff = new Set(attData.map(r => r.lineUid)).size;
     const totalMin = attData.reduce((s,r) => s + r.workMin, 0);
     const el = document.getElementById('attSummary');
@@ -669,8 +673,8 @@
 
   function exportAttendanceCSV() {
     if (!attData.length) { alert('先にデータを表示してください'); return; }
-    const headers = ['日付','名前','役職','出勤','退勤','実労働','時給','基本給','リザーブ','交通費','日給計'];
-    const rows = attData.map(r => [r.date, r.name, r.role, r.clockIn, r.clockOut, r.workHours, r.hourlyWage, r.basePay, r.rain, r.transport, r.dayPay]);
+    const headers = ['日付','名前','役職','区分','出勤','退勤','実労働','時給','基本給','リザーブ','交通費','日給計'];
+    const rows = attData.map(r => [r.date, r.name, r.role, r.reserveOnly ? 'リザーブ単独（休業）' : '勤務', r.clockIn, r.clockOut, r.workHours, r.hourlyWage, r.basePay, r.rain, r.transport, r.dayPay]);
     downloadCSV('勤怠一覧_' + document.getElementById('attMonth').value, headers, rows);
   }
 
