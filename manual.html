@@ -357,7 +357,7 @@
       </div>
       <p>出勤打刻を忘れた場合は、公式LINEに以下の形式で送信してください。</p>
       <div class="send-box">出勤申告 09:00</div>
-      <div class="send-label">↑ 「出勤申告」の後に実際に出勤した時刻をHH:MM形式で送信</div>
+      <div class="send-label">↑ 「出勤申告」の後に実際に出勤した時刻をHH:MM形式で送信。その後、打刻忘れの理由を入力します。</div>
       <div class="bubble-wrap clearfix">
         <div class="bubble-label">システムからの返信</div>
         <div class="bubble bot">出勤後申告（09:00）を受付けました。
@@ -373,7 +373,7 @@
       </div>
       <p>退勤打刻を忘れた場合は、公式LINEに以下の形式で送信してください。</p>
       <div class="send-box">退勤申告 18:00</div>
-      <div class="send-label">↑ 「退勤申告」の後に実際に退勤した時刻をHH:MM形式で送信</div>
+      <div class="send-label">↑ 「退勤申告」の後に実際に退勤した時刻をHH:MM形式で送信。その後、打刻忘れの理由を入力します。</div>
       <div class="bubble-wrap clearfix">
         <div class="bubble-label">システムからの返信</div>
         <div class="bubble bot">退勤後申告（18:00）を受付けました。
@@ -486,12 +486,11 @@
         <div class="step-num">2</div>
         <div class="step-title">希望を入力する</div>
       </div>
-      <p>カレンダーから日付を選択し、シフト希望を選びます。</p>
+      <p>カレンダーから日付を選択します。出勤希望の場合は、開始時刻・終了時刻を「09:00〜18:00」のように指定して保存します。休み希望の場合は時間指定不要です。</p>
       <table>
-        <tr><th>選択肢</th><th>意味</th></tr>
-        <tr><td>フル</td><td>終日出勤可能</td></tr>
-        <tr><td>半休</td><td>半日のみ出勤可能</td></tr>
-        <tr><td>不可</td><td>出勤不可</td></tr>
+        <tr><th>選択肢</th><th>入力内容</th></tr>
+        <tr><td>出勤希望</td><td>開始時刻・終了時刻を入力（例：09:00〜18:00）</td></tr>
+        <tr><td>休み希望</td><td>時間指定なし</td></tr>
       </table>
     </div>
 
@@ -565,6 +564,7 @@
         <tr><td><strong>出勤申告 HH:MM</strong></td><td>出勤打刻忘れの後申告（承認待ち）</td></tr>
         <tr><td><strong>退勤申告 HH:MM</strong></td><td>退勤打刻忘れの後申告（承認待ち）</td></tr>
         <tr><td><strong>リザーブ申請</strong></td><td>業務中止日に出勤打刻なしで申請（+3,000円、交通費・勤務時間の加算なし）</td></tr>
+        <tr><td><strong>経費報告</strong></td><td>金額 → 用途 → レシート写真（または「レシートなし」）の順に送信して車内経費を登録</td></tr>
         <tr><td><strong>キャンセル</strong></td><td>途中の操作をキャンセルして最初に戻る</td></tr>
         <tr><td><strong>マニュアル</strong></td><td>このマニュアルを表示</td></tr>
       </table>
@@ -609,13 +609,13 @@
 
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">出勤打刻を忘れた</div>
-      <div class="faq-a">公式LINEに「出勤申告 09:00」の形式で送信してください。管理者が承認すると出勤時刻が確定されます。
+      <div class="faq-a">公式LINEに「出勤申告 09:00」の形式で送信してください。続けて、打刻忘れの理由を入力します。管理者が承認すると出勤時刻が確定されます。
 「出勤忘れました」などの自然文は受付けられません。必ず「出勤申告 HH:MM」の形式で送信してください。</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">退勤打刻を忘れた</div>
-      <div class="faq-a">公式LINEに「退勤申告 18:00」の形式で送信してください。管理者が承認すると退勤時刻が確定されます。
+      <div class="faq-a">公式LINEに「退勤申告 18:00」の形式で送信してください。続けて、打刻忘れの理由を入力します。管理者が承認すると退勤時刻が確定されます。
 「退勤忘れました」などの自然文は受付けられません。必ず「退勤申告 HH:MM」の形式で送信してください。
 却下された場合は再度申請できます。</div>
     </div>
