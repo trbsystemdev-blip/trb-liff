@@ -395,7 +395,7 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;">
           <div><label style="display:block;font-size:12px;margin-bottom:4px;">開始残高（円）</label><input type="number" id="expenseOpeningBalance" min="0" step="1" style="width:100%;padding:9px;"></div>
           <div><label style="display:block;font-size:12px;margin-bottom:4px;">アラート基準（円未満）</label><input type="number" id="expenseThreshold" min="0" step="1" style="width:100%;padding:9px;"></div>
-          <div><label style="display:block;font-size:12px;margin-bottom:4px;">通知先</label><select id="expenseAlertUser" style="width:100%;padding:9px;"></select></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">通知先</label><select id="expenseAlertUser" style="width:100%;padding:9px;color:#333;"><option value="__WATANABE_DAISUKE__">渡部大輔（既定通知先）</option></select></div>
           <button class="btn btn-primary" onclick="saveExpenseSettings()">設定を保存</button>
         </div>
       </div>
@@ -967,6 +967,12 @@
     select.appendChild(placeholder);
 
     const validUsers = (users || []).filter(u => u && u.line_uid);
+    if (validUsers.length === 0) {
+      const defaultRecipient = document.createElement('option');
+      defaultRecipient.value = '__WATANABE_DAISUKE__';
+      defaultRecipient.textContent = '渡部大輔（既定通知先）';
+      select.appendChild(defaultRecipient);
+    }
     validUsers.forEach(u => {
       const option = document.createElement('option');
       option.value = u.line_uid;
@@ -975,8 +981,8 @@
     });
 
     // APIから候補が一時的に返らない場合も、保存済みの通知先を選択可能にする。
-    const savedRecipient = settings.alert_line_uid || '';
-    if (savedRecipient && !validUsers.some(u => u.line_uid === savedRecipient)) {
+    const savedRecipient = settings.alert_line_uid || (validUsers.length === 0 ? '__WATANABE_DAISUKE__' : '');
+    if (savedRecipient && savedRecipient !== '__WATANABE_DAISUKE__' && !validUsers.some(u => u.line_uid === savedRecipient)) {
       const fallback = document.createElement('option');
       fallback.value = savedRecipient;
       fallback.textContent = '現在の通知先（渡部大輔さん）';
@@ -1036,9 +1042,9 @@
   async function saveExpenseSettings() {
     const openingBalance = Number(document.getElementById('expenseOpeningBalance').value);
     const lowBalanceThreshold = Number(document.getElementById('expenseThreshold').value);
-    const alertLineUid = document.getElementById('expenseAlertUser').value;
-    if (!Number.isInteger(openingBalance) || openingBalance < 0 || !Number.isInteger(lowBalanceThreshold) || lowBalanceThreshold < 0 || !alertLineUid) {
-      alert('開始残高・アラート基準（0以上の整数）・通知先を入力してください。');
+    const alertLineUid = document.getElementById('expenseAlertUser').value || '__WATANABE_DAISUKE__';
+    if (!Number.isInteger(openingBalance) || openingBalance < 0 || !Number.isInteger(lowBalanceThreshold) || lowBalanceThreshold < 0) {
+      alert('開始残高・アラート基準は0以上の整数で入力してください。');
       return;
     }
     const d = await apiPost('/api/admin/expense-settings', { openingBalance, lowBalanceThreshold, alertLineUid });
