@@ -45,6 +45,11 @@
     .shift-option.off { border-color: #e74c3c; color: #e74c3c; }
     .shift-option.off:hover, .shift-option.off.selected { background: #e74c3c; color: white; }
     .shift-option .icon { font-size: 28px; margin-bottom: 6px; }
+    .time-range { background:#f7fbf8; border:1px solid #cfead8; border-radius:10px; padding:12px; margin-bottom:14px; }
+    .time-range label { display:block; font-size:13px; font-weight:bold; margin-bottom:8px; color:#276749; }
+    .time-inputs { display:flex; align-items:center; gap:8px; }
+    .time-inputs input { flex:1; min-width:0; padding:10px 8px; border:1px solid #b7d9c1; border-radius:8px; font-size:15px; }
+    .time-separator { font-weight:bold; color:#52715c; }
     .modal-cancel { width: 100%; padding: 14px; background: #f5f5f5; border: none; border-radius: 10px; font-size: 15px; color: #666; cursor: pointer; }
     .summary-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
     .summary-card h3 { font-size: 14px; color: #888; margin-bottom: 12px; }
@@ -102,6 +107,14 @@
       </div>
       <div class="shift-option off" onclick="selectShift('休み希望')">
         <div class="icon">🏠</div>休み希望
+      </div>
+    </div>
+    <div class="time-range">
+      <label>出勤希望の場合は希望時間を入力してください</label>
+      <div class="time-inputs">
+        <input type="time" id="shiftStartTime" aria-label="開始時刻">
+        <span class="time-separator">〜</span>
+        <input type="time" id="shiftEndTime" aria-label="終了時刻">
       </div>
     </div>
     <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
@@ -169,9 +182,10 @@
       cell.appendChild(numDiv);
       if (shiftData[dateStr]) {
         const badge = document.createElement("div");
-        const isWork = shiftData[dateStr] === "出勤希望";
+        const entry = shiftData[dateStr];
+        const isWork = entry.type === "出勤希望";
         badge.className = "shift-badge " + (isWork ? "work" : "off");
-        badge.textContent = isWork ? "出勤" : "休み";
+        badge.textContent = isWork ? `出勤\n${entry.startTime}〜${entry.endTime}` : "休み";
         cell.appendChild(badge);
       }
       if (!isPast) cell.onclick = () => openModal(dateStr, d, currentMonth + 1);
@@ -191,9 +205,14 @@
     selectedDate = dateStr;
     document.getElementById("modalTitle").textContent = month + "月" + day + "日 のシフト希望";
     document.querySelectorAll(".shift-option").forEach(el => el.classList.remove("selected"));
+    document.getElementById("shiftStartTime").value = "";
+    document.getElementById("shiftEndTime").value = "";
     if (shiftData[dateStr]) {
-      const isWork = shiftData[dateStr] === "出勤希望";
+      const entry = shiftData[dateStr];
+      const isWork = entry.type === "出勤希望";
       document.querySelectorAll(".shift-option")[isWork ? 0 : 1].classList.add("selected");
+      document.getElementById("shiftStartTime").value = entry.startTime || "";
+      document.getElementById("shiftEndTime").value = entry.endTime || "";
     }
     document.getElementById("modalOverlay").classList.add("active");
   }
@@ -207,7 +226,17 @@
 
   function selectShift(type) {
     if (!selectedDate) return;
-    shiftData[selectedDate] = type;
+    if (type === "出勤希望") {
+      const startTime = document.getElementById("shiftStartTime").value;
+      const endTime = document.getElementById("shiftEndTime").value;
+      if (!startTime || !endTime || startTime >= endTime) {
+        alert("出勤希望は開始時刻・終了時刻を正しく入力してください。");
+        return;
+      }
+      shiftData[selectedDate] = { type, startTime, endTime };
+    } else {
+      shiftData[selectedDate] = { type, startTime: null, endTime: null };
+    }
     document.getElementById("modalOverlay").classList.remove("active");
     selectedDate = null;
     renderCalendar();
@@ -220,17 +249,18 @@
     if (entries.length === 0) {
       summaryEl.innerHTML = "<div style=\"color:#aaa;font-size:13px;padding:8px 0;\">まだシフトが設定されていません</div>";
     } else {
-      summaryEl.innerHTML = entries.map(([date, type]) => {
+      summaryEl.innerHTML = entries.map(([date, entry]) => {
         const d = new Date(date + "T00:00:00");
-        const isWork = type === "出勤希望";
-        return "<div class=\"summary-item\"><span>" + (d.getMonth()+1) + "月" + d.getDate() + "日（" + "日月火水木金土"[d.getDay()] + "）</span><span class=\"badge " + (isWork ? "work" : "off") + "\">" + type + "</span></div>";
+        const isWork = entry.type === "出勤希望";
+        const label = isWork ? `${entry.type} ${entry.startTime}〜${entry.endTime}` : entry.type;
+        return "<div class=\"summary-item\"><span>" + (d.getMonth()+1) + "月" + d.getDate() + "日（" + "日月火水木金土"[d.getDay()] + "）</span><span class=\"badge " + (isWork ? "work" : "off") + "\">" + label + "</span></div>";
       }).join("");
     }
     document.getElementById("submitBtn").disabled = entries.length === 0;
   }
 
   function submitShifts() {
-    const entries = Object.entries(shiftData).map(([date, type]) => ({ date, type }));
+    const entries = Object.entries(shiftData).map(([date, entry]) => ({ date, type: entry.type, startTime: entry.startTime, endTime: entry.endTime }));
     if (entries.length === 0) { alert("シフトを1件以上設定してください。"); return; }
     document.getElementById("loading").classList.add("active");
     fetch(GAS_URL + "/api/liff", {
