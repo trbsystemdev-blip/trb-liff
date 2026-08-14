@@ -212,6 +212,7 @@
     <div class="tab" onclick="switchTab('pending')">🔔 打刻申告承認</div>
     <div class="tab" onclick="switchTab('shifts')">📅 シフト希望</div>
     <div class="tab" onclick="switchTab('reports')">📝 日報一覧</div>
+    <div class="tab" onclick="switchTab('expenses')">💰 経費管理</div>
   </div>
 
   <div class="content">
@@ -338,11 +339,12 @@
                 <th>種別</th>
                 <th>申告時刻</th>
                 <th>現在の記録</th>
+                <th>理由</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody id="pendingTableBody">
-              <tr><td colspan="6" class="loading">「更新」を押してください</td></tr>
+              <tr><td colspan="7" class="loading">「更新」を押してください</td></tr>
             </tbody>
           </table>
         </div>
@@ -367,13 +369,53 @@
                 <th>日付</th>
                 <th>名前</th>
                 <th>シフト希望</th>
+                <th>希望時間</th>
               </tr>
             </thead>
             <tbody id="shiftTableBody">
-              <tr><td colspan="3" class="loading">月を選択して「表示」を押してください</td></tr>
+              <tr><td colspan="4" class="loading">月を選択して「表示」を押してください</td></tr>
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- 経費管理タブ -->
+    <div class="tab-content" id="tab-expenses">
+      <div class="month-selector">
+        <label>対象月：</label>
+        <input type="month" id="expenseMonth">
+        <button class="btn btn-primary" onclick="loadExpenses()">表示</button>
+        <button class="btn btn-success" onclick="exportExpensesCSV()">📥 CSV出力</button>
+      </div>
+      <div id="expenseSummary" class="summary-grid" style="display:none;"></div>
+      <div class="card">
+        <div class="card-title">⚙️ 経費袋・アラート設定</div>
+        <div class="alert alert-info">開始残高は経費台帳の起点です。実際の現金残高と一致する金額に設定してください。残高がアラート基準を初めて下回った時だけ、指定スタッフへLINE通知します。補充して基準以上に戻ると次回の低下時に再通知されます。</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;">
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">開始残高（円）</label><input type="number" id="expenseOpeningBalance" min="0" step="1" style="width:100%;padding:9px;"></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">アラート基準（円未満）</label><input type="number" id="expenseThreshold" min="0" step="1" style="width:100%;padding:9px;"></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">通知先</label><select id="expenseAlertUser" style="width:100%;padding:9px;"></select></div>
+          <button class="btn btn-primary" onclick="saveExpenseSettings()">設定を保存</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">➕ 管理者による補充・事故損失の登録</div>
+        <div style="display:grid;grid-template-columns:150px 130px 1fr 1fr auto;gap:8px;align-items:end;">
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">種別</label><select id="manualExpenseType" style="width:100%;padding:9px;"><option value="replenishment">現金補充</option><option value="loss">事故・盗難等の損失</option><option value="expense">支出（管理者入力）</option></select></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">金額（円）</label><input type="number" id="manualExpenseAmount" min="1" step="1" style="width:100%;padding:9px;"></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">用途・内容</label><input type="text" id="manualExpensePurpose" maxlength="200" style="width:100%;padding:9px;" placeholder="例：経費袋へ現金補充"></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">備考（任意）</label><input type="text" id="manualExpenseNote" maxlength="200" style="width:100%;padding:9px;" placeholder="例：被害届番号など"></div>
+          <button class="btn btn-warning" onclick="addManualExpenseTransaction()">登録</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧾 経費・補充・損失一覧</div>
+        <div id="expenseLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>日付</th><th>種別</th><th>金額</th><th>用途・内容</th><th>報告者</th><th>レシート</th><th>備考</th></tr></thead>
+          <tbody id="expenseTableBody"><tr><td colspan="7" class="loading">月を選択して「表示」を押してください</td></tr></tbody>
+        </table></div>
       </div>
     </div>
 
@@ -419,6 +461,8 @@
   let monthlyData = [];
   let shiftData = [];
   let reportData = [];
+  let expenseData = [];
+  let expenseSettings = null;
 
   // --- ログイン（sessionStorageでページリロード後も維持） ---
   function doLogin() {
@@ -476,7 +520,7 @@
   function initDashboard() {
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    ['attMonth','monthlyMonth','shiftMonth','reportMonth','recalcMonth'].forEach(id => {
+    ['attMonth','monthlyMonth','shiftMonth','reportMonth','expenseMonth','recalcMonth'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = ym;
     });
@@ -742,13 +786,13 @@
     document.getElementById('pendingLoading').style.display = 'none';
     if (!d.success) {
       // pending_clock_outカラムが未作成の場合は案内を表示
-      document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>`;
+      document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>`;
       return;
     }
     const records = d.records || [];
     const tbody = document.getElementById('pendingTableBody');
     if (!records.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">承認待ちの申告はありません</td></tr>';
       return;
     }
     tbody.innerHTML = records.map(r => {
@@ -772,6 +816,7 @@
         <td>${badge}</td>
         <td class="status-warn"><strong>${pendingTime}</strong></td>
         <td style="font-size:12px;color:#666;">${currentRecord}</td>
+        <td style="font-size:12px;max-width:220px;white-space:pre-wrap;">${r.pendingReason || '-'}</td>
         <td style="display:flex;gap:6px;">${approveBtn}${rejectBtn}</td>
       </tr>`;
     }).join('');
@@ -876,7 +921,7 @@
   function renderShiftTable() {
     const tbody = document.getElementById('shiftTableBody');
     if (!shiftData.length) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">データがありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;">データがありません</td></tr>';
       return;
     }
     tbody.innerHTML = shiftData.map(r => {
@@ -887,15 +932,129 @@
         <td>${r.date}</td>
         <td><strong>${r.name}</strong></td>
         <td><span class="badge ${badgeClass}">${r.type}</span></td>
+        <td>${r.startTime && r.endTime ? `${r.startTime}〜${r.endTime}` : '-'}</td>
       </tr>`;
     }).join('');
   }
 
   function exportShiftsCSV() {
     if (!shiftData.length) { alert('先にデータを表示してください'); return; }
-    const headers = ['日付','名前','シフト希望'];
-    const rows = shiftData.map(r => [r.date, r.name, r.type]);
+    const headers = ['日付','名前','シフト希望','希望時間'];
+    const rows = shiftData.map(r => [r.date, r.name, r.type, r.startTime && r.endTime ? `${r.startTime}〜${r.endTime}` : '']);
     downloadCSV('シフト希望_' + document.getElementById('shiftMonth').value, headers, rows);
+  }
+
+  // --- 経費管理 ---
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function renderExpenseSettings(settings, users) {
+    expenseSettings = settings;
+    document.getElementById('expenseOpeningBalance').value = settings.opening_balance ?? 20000;
+    document.getElementById('expenseThreshold').value = settings.low_balance_threshold ?? 5000;
+    const select = document.getElementById('expenseAlertUser');
+    select.innerHTML = '<option value="">通知先を選択してください</option>' + (users || []).map(u =>
+      `<option value="${u.line_uid}">${escapeHtml(u.name || u.line_uid)}${u.role ? '（' + escapeHtml(u.role) + '）' : ''}</option>`
+    ).join('');
+    select.value = settings.alert_line_uid || '';
+  }
+
+  async function loadExpenses() {
+    const ym = document.getElementById('expenseMonth').value.replace('-', '');
+    if (!ym) { alert('月を選択してください'); return; }
+    document.getElementById('expenseLoading').style.display = 'block';
+    const [settingsResult, expenseResult] = await Promise.all([
+      apiGet('/api/admin/expense-settings'),
+      apiGet(`/api/admin/expenses?ym=${ym}`)
+    ]);
+    document.getElementById('expenseLoading').style.display = 'none';
+    if (!settingsResult.success) { alert('経費設定の取得失敗: ' + settingsResult.error); return; }
+    if (!expenseResult.success) { alert('経費一覧の取得失敗: ' + expenseResult.error); return; }
+    renderExpenseSettings(settingsResult.settings, settingsResult.users);
+    expenseData = expenseResult.records || [];
+    renderExpenseSummary(expenseResult);
+    renderExpenseTable();
+  }
+
+  function renderExpenseSummary(data) {
+    const month = data.monthTotals || { expense: 0, replenishment: 0, loss: 0 };
+    const el = document.getElementById('expenseSummary');
+    const low = Number(data.balance) < Number((data.settings || {}).low_balance_threshold || 0);
+    el.innerHTML = `
+      <div class="summary-card"><div class="val" style="color:${low ? '#c62828' : '#2e7d32'};">${Number(data.balance || 0).toLocaleString()}円</div><div class="lbl">現在残高${low ? '（要補充）' : ''}</div></div>
+      <div class="summary-card"><div class="val">${Number(month.expense || 0).toLocaleString()}円</div><div class="lbl">当月支出</div></div>
+      <div class="summary-card"><div class="val">${Number(month.replenishment || 0).toLocaleString()}円</div><div class="lbl">当月補充</div></div>
+      <div class="summary-card"><div class="val" style="color:#c62828;">${Number(month.loss || 0).toLocaleString()}円</div><div class="lbl">当月事故・損失</div></div>`;
+    el.style.display = 'grid';
+  }
+
+  function renderExpenseTable() {
+    const tbody = document.getElementById('expenseTableBody');
+    if (!expenseData.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">データがありません</td></tr>';
+      return;
+    }
+    const labels = { expense: '支出', replenishment: '現金補充', loss: '事故・損失' };
+    const colors = { expense: '#c62828', replenishment: '#2e7d32', loss: '#8e24aa' };
+    tbody.innerHTML = expenseData.map(r => `<tr>
+      <td>${escapeHtml(r.date)}</td>
+      <td><span class="badge" style="background:#f3f4f6;color:${colors[r.type] || '#555'};">${labels[r.type] || escapeHtml(r.type)}</span></td>
+      <td style="font-weight:bold;color:${colors[r.type] || '#333'};">${r.type === 'replenishment' ? '+' : '-'}${Number(r.amount).toLocaleString()}円</td>
+      <td>${escapeHtml(r.purpose)}</td>
+      <td>${escapeHtml(r.reporter)}</td>
+      <td>${r.receiptUrl ? `<a href="${r.receiptUrl}" target="_blank" rel="noopener">📷 表示</a>` : '-'}</td>
+      <td>${escapeHtml(r.note || '-')}</td>
+    </tr>`).join('');
+  }
+
+  async function saveExpenseSettings() {
+    const openingBalance = Number(document.getElementById('expenseOpeningBalance').value);
+    const lowBalanceThreshold = Number(document.getElementById('expenseThreshold').value);
+    const alertLineUid = document.getElementById('expenseAlertUser').value;
+    if (!Number.isInteger(openingBalance) || openingBalance < 0 || !Number.isInteger(lowBalanceThreshold) || lowBalanceThreshold < 0 || !alertLineUid) {
+      alert('開始残高・アラート基準（0以上の整数）・通知先を入力してください。');
+      return;
+    }
+    const d = await apiPost('/api/admin/expense-settings', { openingBalance, lowBalanceThreshold, alertLineUid });
+    if (d.success) {
+      alert(`設定を保存しました。現在残高：${Number(d.balance).toLocaleString()}円`);
+      loadExpenses();
+    } else {
+      alert('設定保存失敗: ' + d.error);
+    }
+  }
+
+  async function addManualExpenseTransaction() {
+    const transactionType = document.getElementById('manualExpenseType').value;
+    const amount = Number(document.getElementById('manualExpenseAmount').value);
+    const purpose = document.getElementById('manualExpensePurpose').value.trim();
+    const note = document.getElementById('manualExpenseNote').value.trim();
+    if (!Number.isInteger(amount) || amount <= 0 || !purpose) {
+      alert('金額と用途・内容を入力してください。');
+      return;
+    }
+    if (transactionType === 'loss' && !confirm('事故・盗難等の損失として登録します。残高が減少します。よろしいですか？')) return;
+    const d = await apiPost('/api/admin/expense-transaction', { transactionType, amount, purpose, note });
+    if (d.success) {
+      document.getElementById('manualExpenseAmount').value = '';
+      document.getElementById('manualExpensePurpose').value = '';
+      document.getElementById('manualExpenseNote').value = '';
+      alert(`登録しました。現在残高：${Number(d.balance).toLocaleString()}円`);
+      loadExpenses();
+    } else {
+      alert('登録失敗: ' + d.error);
+    }
+  }
+
+  function exportExpensesCSV() {
+    if (!expenseData.length) { alert('先にデータを表示してください'); return; }
+    const labels = { expense: '支出', replenishment: '現金補充', loss: '事故・損失' };
+    const headers = ['日付', '種別', '金額', '用途・内容', '報告者', 'レシート有無', '備考'];
+    const rows = expenseData.map(r => [r.date, labels[r.type] || r.type, r.amount, r.purpose, r.reporter, r.receiptUrl ? 'あり' : 'なし', r.note]);
+    downloadCSV('経費管理_' + document.getElementById('expenseMonth').value, headers, rows);
   }
 
   // --- 日報一覧 ---
