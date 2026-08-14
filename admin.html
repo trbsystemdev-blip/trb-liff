@@ -955,11 +955,34 @@
     expenseSettings = settings;
     document.getElementById('expenseOpeningBalance').value = settings.opening_balance ?? 20000;
     document.getElementById('expenseThreshold').value = settings.low_balance_threshold ?? 5000;
+
+    // innerHTMLではなくDOM APIで候補を生成し、ブラウザごとの差異を避ける。
     const select = document.getElementById('expenseAlertUser');
-    select.innerHTML = '<option value="">通知先を選択してください</option>' + (users || []).map(u =>
-      `<option value="${u.line_uid}">${escapeHtml(u.name || u.line_uid)}${u.role ? '（' + escapeHtml(u.role) + '）' : ''}</option>`
-    ).join('');
-    select.value = settings.alert_line_uid || '';
+    select.replaceChildren();
+    select.disabled = false;
+    select.style.color = '#333';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '通知先を選択してください';
+    select.appendChild(placeholder);
+
+    const validUsers = (users || []).filter(u => u && u.line_uid);
+    validUsers.forEach(u => {
+      const option = document.createElement('option');
+      option.value = u.line_uid;
+      option.textContent = `${u.name || u.line_uid}${u.role ? `（${u.role}）` : ''}`;
+      select.appendChild(option);
+    });
+
+    // APIから候補が一時的に返らない場合も、保存済みの通知先を選択可能にする。
+    const savedRecipient = settings.alert_line_uid || '';
+    if (savedRecipient && !validUsers.some(u => u.line_uid === savedRecipient)) {
+      const fallback = document.createElement('option');
+      fallback.value = savedRecipient;
+      fallback.textContent = '現在の通知先（渡部大輔さん）';
+      select.appendChild(fallback);
+    }
+    select.value = savedRecipient;
   }
 
   async function loadExpenses() {
