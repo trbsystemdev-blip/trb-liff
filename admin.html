@@ -400,9 +400,9 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">➕ 管理者による補充・事故損失の登録</div>
+        <div class="card-title">➕ 管理者による入金・補充・事故損失の登録</div>
         <div style="display:grid;grid-template-columns:150px 130px 1fr 1fr auto;gap:8px;align-items:end;">
-          <div><label style="display:block;font-size:12px;margin-bottom:4px;">種別</label><select id="manualExpenseType" style="width:100%;padding:9px;"><option value="replenishment">現金補充</option><option value="loss">事故・盗難等の損失</option><option value="expense">支出（管理者入力）</option></select></div>
+          <div><label style="display:block;font-size:12px;margin-bottom:4px;">種別</label><select id="manualExpenseType" style="width:100%;padding:9px;"><option value="income">入金（管理者入力）</option><option value="replenishment">現金補充</option><option value="loss">事故・盗難等の損失</option><option value="expense">支出（管理者入力）</option></select></div>
           <div><label style="display:block;font-size:12px;margin-bottom:4px;">金額（円）</label><input type="number" id="manualExpenseAmount" min="1" step="1" style="width:100%;padding:9px;"></div>
           <div><label style="display:block;font-size:12px;margin-bottom:4px;">用途・内容</label><input type="text" id="manualExpensePurpose" maxlength="200" style="width:100%;padding:9px;" placeholder="例：経費袋へ現金補充"></div>
           <div><label style="display:block;font-size:12px;margin-bottom:4px;">備考（任意）</label><input type="text" id="manualExpenseNote" maxlength="200" style="width:100%;padding:9px;" placeholder="例：被害届番号など"></div>
@@ -410,7 +410,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">🧾 経費・補充・損失一覧</div>
+        <div class="card-title">🧾 経費・入金・補充・損失一覧</div>
         <div id="expenseLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap"><table>
           <thead><tr><th>日付</th><th>種別</th><th>金額</th><th>用途・内容</th><th>報告者</th><th>レシート</th><th>備考</th></tr></thead>
@@ -1009,13 +1009,14 @@
   }
 
   function renderExpenseSummary(data) {
-    const month = data.monthTotals || { expense: 0, replenishment: 0, loss: 0 };
+    const month = data.monthTotals || { expense: 0, replenishment: 0, income: 0, loss: 0 };
     const el = document.getElementById('expenseSummary');
     const low = Number(data.balance) < Number((data.settings || {}).low_balance_threshold || 0);
     el.innerHTML = `
       <div class="summary-card"><div class="val" style="color:${low ? '#c62828' : '#2e7d32'};">${Number(data.balance || 0).toLocaleString()}円</div><div class="lbl">現在残高${low ? '（要補充）' : ''}</div></div>
       <div class="summary-card"><div class="val">${Number(month.expense || 0).toLocaleString()}円</div><div class="lbl">当月支出</div></div>
-      <div class="summary-card"><div class="val">${Number(month.replenishment || 0).toLocaleString()}円</div><div class="lbl">当月補充</div></div>
+      <div class="summary-card"><div class="val" style="color:#2e7d32;">${Number(month.income || 0).toLocaleString()}円</div><div class="lbl">当月入金（スタッフ報告）</div></div>
+      <div class="summary-card"><div class="val">${Number(month.replenishment || 0).toLocaleString()}円</div><div class="lbl">当月補充（管理者）</div></div>
       <div class="summary-card"><div class="val" style="color:#c62828;">${Number(month.loss || 0).toLocaleString()}円</div><div class="lbl">当月事故・損失</div></div>`;
     el.style.display = 'grid';
   }
@@ -1026,12 +1027,12 @@
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">データがありません</td></tr>';
       return;
     }
-    const labels = { expense: '支出', replenishment: '現金補充', loss: '事故・損失' };
-    const colors = { expense: '#c62828', replenishment: '#2e7d32', loss: '#8e24aa' };
+    const labels = { expense: '支出', income: '入金（スタッフ報告）', replenishment: '現金補充（管理者）', loss: '事故・損失' };
+    const colors = { expense: '#c62828', income: '#2e7d32', replenishment: '#1565c0', loss: '#8e24aa' };
     tbody.innerHTML = expenseData.map(r => `<tr>
       <td>${escapeHtml(r.date)}</td>
       <td><span class="badge" style="background:#f3f4f6;color:${colors[r.type] || '#555'};">${labels[r.type] || escapeHtml(r.type)}</span></td>
-      <td style="font-weight:bold;color:${colors[r.type] || '#333'};">${r.type === 'replenishment' ? '+' : '-'}${Number(r.amount).toLocaleString()}円</td>
+      <td style="font-weight:bold;color:${colors[r.type] || '#333'};">${(r.type === 'replenishment' || r.type === 'income') ? '+' : '-'}${Number(r.amount).toLocaleString()}円</td>
       <td>${escapeHtml(r.purpose)}</td>
       <td>${escapeHtml(r.reporter)}</td>
       <td>${r.receiptUrl ? `<a href="${r.receiptUrl}" target="_blank" rel="noopener">📷 表示</a>` : '-'}</td>
@@ -1080,7 +1081,7 @@
 
   function exportExpensesCSV() {
     if (!expenseData.length) { alert('先にデータを表示してください'); return; }
-    const labels = { expense: '支出', replenishment: '現金補充', loss: '事故・損失' };
+    const labels = { expense: '支出', income: '入金（スタッフ報告）', replenishment: '現金補充（管理者）', loss: '事故・損失' };
     const headers = ['日付', '種別', '金額', '用途・内容', '報告者', 'レシート有無', '備考'];
     const rows = expenseData.map(r => [r.date, labels[r.type] || r.type, r.amount, r.purpose, r.reporter, r.receiptUrl ? 'あり' : 'なし', r.note]);
     downloadCSV('経費管理_' + document.getElementById('expenseMonth').value, headers, rows);
