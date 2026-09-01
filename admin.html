@@ -213,6 +213,7 @@
     <div class="tab" onclick="switchTab('shifts')">📅 シフト希望</div>
     <div class="tab" onclick="switchTab('reports')">📝 日報一覧</div>
     <div class="tab" onclick="switchTab('expenses')">💰 経費管理</div>
+    <div class="tab" onclick="switchTab('sns-video')">🎥 SNS動画施策</div>
   </div>
 
   <div class="content">
@@ -419,6 +420,20 @@
       </div>
     </div>
 
+    <!-- SNS動画施策タブ -->
+    <div class="tab-content" id="tab-sns-video">
+      <div class="card">
+        <div class="card-title">🎥 参加同意・振込先口座の提出状況</div>
+        <div class="alert alert-info">参加同意の日時と、振込先口座の提出状況を確認できます。口座番号は下4桁のみを表示します。支払い前の原本確認は、権限のある管理者が行ってください。</div>
+        <button class="btn btn-primary" onclick="loadSnsVideoSubmissions()" style="margin-bottom:16px;">更新</button>
+        <div id="snsVideoLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>名前</th><th>役職</th><th>参加同意</th><th>同意日時</th><th>口座登録</th><th>登録日時</th><th>口座番号</th><th>名義カナ</th></tr></thead>
+          <tbody id="snsVideoTableBody"><tr><td colspan="8" class="loading">「更新」を押してください</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
     <!-- 日報一覧タブ -->
     <div class="tab-content" id="tab-reports">
       <div class="month-selector">
@@ -463,6 +478,7 @@
   let reportData = [];
   let expenseData = [];
   let expenseSettings = null;
+  let snsVideoSubmissionData = [];
 
   // --- ログイン（sessionStorageでページリロード後も維持） ---
   function doLogin() {
@@ -536,6 +552,7 @@
     const clickedTab = event.target;
     clickedTab.classList.add('active');
     document.getElementById(`tab-${name}`).classList.add('active');
+    if (name === 'sns-video') loadSnsVideoSubmissions();
   }
 
   // --- API呼び出しヘルパー ---
@@ -1085,6 +1102,51 @@
     const headers = ['日付', '種別', '金額', '用途・内容', '報告者', 'レシート有無', '備考'];
     const rows = expenseData.map(r => [r.date, labels[r.type] || r.type, r.amount, r.purpose, r.reporter, r.receiptUrl ? 'あり' : 'なし', r.note]);
     downloadCSV('経費管理_' + document.getElementById('expenseMonth').value, headers, rows);
+  }
+
+  // --- SNS動画施策：提出状況（口座情報はマスキング済み表示のみ） ---
+  async function loadSnsVideoSubmissions() {
+    const loading = document.getElementById('snsVideoLoading');
+    loading.style.display = 'block';
+    try {
+      const d = await apiGet('/api/admin/sns-video-submissions');
+      if (!d.success) { alert('SNS動画施策の提出状況を取得できませんでした: ' + (d.error || '不明なエラー')); return; }
+      snsVideoSubmissionData = d.records || [];
+      renderSnsVideoSubmissionTable();
+    } catch (e) {
+      alert('通信エラー: ' + e.message);
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  function formatSnsDate(value) {
+    return value ? new Date(value).toLocaleString('ja-JP') : '-';
+  }
+
+  function renderSnsVideoSubmissionTable() {
+    const tbody = document.getElementById('snsVideoTableBody');
+    if (!snsVideoSubmissionData.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">スタッフが登録されていません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = snsVideoSubmissionData.map(row => {
+      const roleClass = row.role && row.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const consent = row.consentedAt ? '<span class="status-ok">提出済み</span>' : '<span class="status-warn">未提出</span>';
+      const account = row.accountStatus === 'complete'
+        ? '<span class="status-ok">登録済み</span>'
+        : (row.accountStatus === 'needs_review' ? '<span class="status-warn">要確認</span>' : '<span class="status-warn">未提出</span>');
+      return `<tr>
+        <td><strong>${escapeHtml(row.name)}</strong></td>
+        <td><span class="badge ${roleClass}">${escapeHtml(row.role || '-')}</span></td>
+        <td>${consent}</td>
+        <td style="font-size:12px;color:#666;">${formatSnsDate(row.consentedAt)}</td>
+        <td>${account}</td>
+        <td style="font-size:12px;color:#666;">${formatSnsDate(row.accountSubmittedAt)}</td>
+        <td>${escapeHtml(row.accountLast4 || '-')}</td>
+        <td>${escapeHtml(row.accountHolderKanaMasked || '-')}</td>
+      </tr>`;
+    }).join('');
   }
 
   // --- 日報一覧 ---
