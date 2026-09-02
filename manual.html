@@ -254,6 +254,7 @@
   <button class="nav-btn" onclick="showSection('report', this)">日報</button>
   <button class="nav-btn" onclick="showSection('shift', this)">シフト</button>
   <button class="nav-btn" onclick="showSection('check', this)">勤怠確認</button>
+  <button class="nav-btn" onclick="showSection('sns', this)">SNS動画施策</button>
   <button class="nav-btn" onclick="showSection('other', this)">その他</button>
   <button class="nav-btn" onclick="showSection('faq', this)">FAQ</button>
 </div>
@@ -552,6 +553,70 @@
 
   </div>
 
+  <!-- SNS動画施策 -->
+  <div class="section" id="sec-sns">
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">参加同意書を確認して同意する</div>
+      </div>
+      <p>SNS動画施策に参加する場合は、公式LINEのトークへ次の言葉を送信してください。</p>
+      <div class="send-box">参加同意</div>
+      <div class="send-label">↑ 公式LINEのトークへ送信</div>
+      <p>届いた専用画面をLINEアプリ内で開き、参加同意書の内容を確認します。参加する場合は、画面下部の確認にチェックを入れ、「内容を確認して同意する」を押してください。</p>
+      <div class="bubble-wrap clearfix">
+        <div class="bubble-label">完了メッセージ</div>
+        <div class="bubble bot">同意を受け付けました</div>
+      </div>
+      <div class="tip">あいさつメッセージ内の同意書を確認済みの場合は「<strong>同意します</strong>」と送信して同意記録を残すこともできます。内容をもう一度確認したい場合は、いつでも「参加同意」と送信してください。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">SNS動画施策の内容</div>
+      <table>
+        <tr><th>項目</th><th>内容</th></tr>
+        <tr><td>報酬</td><td>投稿または販売が成立した1件につき、ガイド500円、ドライバー500円</td></tr>
+        <tr><td>カウント</td><td>1人の投稿につき1件。同じグループで3人が投稿した場合は3件。同じお客様の投稿と販売は重複して数えません。</td></tr>
+        <tr><td>成立の確認</td><td>その場で投稿とタグ付けを確認できたものを成立とし、グループLINEへの報告で記録します。</td></tr>
+        <tr><td>支払い</td><td>月末締め・翌月末払い</td></tr>
+        <tr><td>運用</td><td>試験的な施策のため、運用方法は変更となる場合があります。</td></tr>
+      </table>
+      <div class="note"><strong>撮影方法・お客様へのご案内・報告手順</strong>は、グループLINEで共有されているドライバー用またはガイド用のマニュアルをご確認ください。</div>
+    </div>
+
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">振込先口座を専用フォームで登録する</div>
+      </div>
+      <p>参加同意後、報酬の振込先を登録する場合は、公式LINEのトークへ次の言葉を送信してください。</p>
+      <div class="send-box">口座登録</div>
+      <div class="send-label">↑ 公式LINEのトークへ送信</div>
+      <p>届いた専用フォームをLINEアプリ内で開き、金融機関名、支店名、預金種別、口座番号、確認用口座番号、口座名義（カナ）を入力します。確認画面で内容を確認してから「登録する」を押してください。</p>
+      <div class="tip"><strong>口座番号は下4桁だけ</strong>が確認画面に表示されます。入力内容と通帳・キャッシュカードの表記が合っていることを確認してください。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">口座情報の大切な注意</div>
+      <div class="note"><strong>銀行名・支店名・口座番号・名義カナをLINEトークへ直接送らないでください。</strong>口座情報は「口座登録」で届く専用フォームへ入力してください。フォームで入力した情報はLINEトークへ送信されず、登録処理後に暗号化して保管されます。</div>
+      <p>誤ってトークへ口座情報を送った場合は、可能であれば本人でメッセージを削除し、管理者へ連絡してください。その後、専用フォームから正しい情報を登録してください。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">変更・困ったとき</div>
+      <table>
+        <tr><th>状況</th><th>対応</th></tr>
+        <tr><td>同意内容をもう一度見たい</td><td>「参加同意」と送信</td></tr>
+        <tr><td>口座情報を変更したい</td><td>「口座登録」と送信し、専用フォームから登録し直す</td></tr>
+        <tr><td>フォームが開かない</td><td>公式LINEから届いたリンクを、LINEアプリ内で開き直す</td></tr>
+        <tr><td>口座番号の確認入力が合わない</td><td>通帳・キャッシュカードを確認し、同じ7桁の番号を入力する</td></tr>
+        <tr><td>支払い状況を確認したい</td><td>管理者へ連絡する。口座情報はトークへ送らない</td></tr>
+      </table>
+    </div>
+
+  </div>
+
   <!-- その他 -->
   <div class="section" id="sec-other">
 
@@ -566,6 +631,9 @@
         <tr><td><strong>リザーブ申請</strong></td><td>業務中止日に出勤打刻なしで申請（+3,000円、交通費・勤務時間の加算なし）</td></tr>
         <tr><td><strong>経費報告</strong></td><td>金額 → 用途 → レシート写真（または「レシートなし」）の順に送信して車内経費の支出を登録</td></tr>
         <tr><td><strong>入金報告</strong></td><td>金額 → 内容の順に送信して、経費袋へ入れた現金を登録</td></tr>
+        <tr><td><strong>参加同意</strong></td><td>SNS動画施策の参加同意書を専用画面で確認し、同意を記録</td></tr>
+        <tr><td><strong>同意します</strong></td><td>あいさつメッセージ内のSNS動画施策同意書を確認済みの場合に、同意を記録</td></tr>
+        <tr><td><strong>口座登録</strong></td><td>SNS動画施策の報酬振込先を、LINE内の専用フォームから登録・変更</td></tr>
         <tr><td><strong>キャンセル</strong></td><td>途中の操作をキャンセルして最初に戻る</td></tr>
         <tr><td><strong>マニュアル</strong></td><td>このマニュアルを表示</td></tr>
       </table>
@@ -629,6 +697,16 @@
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">シフト希望を提出したが変更したい</div>
       <div class="faq-a">再度シフト提出画面を開いて、変更したい日付を選び直して保存してください。上書き更新されます。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">SNS動画施策の同意内容を確認したい</div>
+      <div class="faq-a">公式LINEに「参加同意」と送信してください。専用画面で同意書の内容を確認し、参加する場合はその画面で同意できます。</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">振込先口座を登録・変更したい</div>
+      <div class="faq-a">公式LINEに「口座登録」と送信してください。届いた専用フォームから入力します。銀行名・支店名・口座番号・名義カナは、LINEトークへ直接送らないでください。</div>
     </div>
 
   </div>
