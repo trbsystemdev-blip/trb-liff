@@ -174,6 +174,36 @@
     .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #c62828; }
     .alert-warn { background: #fff3e0; color: #e65100; border-left: 4px solid #e65100; }
 
+    /* 支払い用原本確認：通常一覧とは分離し、再認証後にだけ表示する */
+    .sensitive-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      align-items: center; justify-content: center; padding: 16px;
+      background: rgba(10, 19, 38, 0.72);
+    }
+    .sensitive-modal-overlay.active { display: flex; }
+    .sensitive-modal {
+      width: min(100%, 640px); max-height: calc(100vh - 32px); overflow-y: auto;
+      background: #fff; border-radius: 14px; padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .sensitive-modal h2 { font-size: 18px; color: #1a1a2e; margin-bottom: 8px; }
+    .sensitive-modal p { font-size: 13px; line-height: 1.65; color: #555; margin-bottom: 14px; }
+    .sensitive-form-row { margin-bottom: 14px; }
+    .sensitive-form-row label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #333; }
+    .sensitive-form-row input, .sensitive-form-row select, .sensitive-form-row textarea {
+      width: 100%; padding: 10px 12px; border: 2px solid #dfe4ea; border-radius: 8px;
+      font: inherit; color: #1a1a2e; background: #fff;
+    }
+    .sensitive-form-row textarea { min-height: 78px; resize: vertical; }
+    .sensitive-form-row input:focus, .sensitive-form-row select:focus, .sensitive-form-row textarea:focus { outline: none; border-color: #0f3460; }
+    .sensitive-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .sensitive-result { display: none; margin-top: 18px; padding: 16px; border: 2px solid #e65100; border-radius: 10px; background: #fff8e1; }
+    .sensitive-result.active { display: block; }
+    .sensitive-record { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .sensitive-record th { width: 35%; background: transparent; color: #555; padding: 9px 8px; border-bottom: 1px solid #eadba5; white-space: normal; }
+    .sensitive-record td { padding: 9px 8px; color: #111; font-weight: 700; border-bottom: 1px solid #eadba5; white-space: normal; word-break: break-all; }
+    .sensitive-countdown { color: #c62828; font-weight: 700; }
+
     /* レスポンシブ */
     @media (max-width: 600px) {
       .content { padding: 12px; }
@@ -424,13 +454,46 @@
     <div class="tab-content" id="tab-sns-video">
       <div class="card">
         <div class="card-title">🎥 参加同意・振込先口座の提出状況</div>
-        <div class="alert alert-info">参加同意の日時と、振込先口座の提出状況を確認できます。口座番号は下4桁のみを表示します。支払い前の原本確認は、権限のある管理者が行ってください。</div>
+        <div class="alert alert-info">参加同意の日時と、振込先口座の提出状況を確認できます。口座番号は下4桁のみを表示します。支払い前の原本確認は、対象者を選び、閲覧理由と管理者パスワードの再入力を経て行います。</div>
         <button class="btn btn-primary" onclick="loadSnsVideoSubmissions()" style="margin-bottom:16px;">更新</button>
         <div id="snsVideoLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap"><table>
-          <thead><tr><th>名前</th><th>役職</th><th>参加同意</th><th>同意日時</th><th>口座登録</th><th>登録日時</th><th>口座番号</th><th>名義カナ</th></tr></thead>
-          <tbody id="snsVideoTableBody"><tr><td colspan="8" class="loading">「更新」を押してください</td></tr></tbody>
+          <thead><tr><th>名前</th><th>役職</th><th>参加同意</th><th>同意日時</th><th>口座登録</th><th>登録日時</th><th>口座番号</th><th>名義カナ</th><th>支払い確認</th></tr></thead>
+          <tbody id="snsVideoTableBody"><tr><td colspan="9" class="loading">「更新」を押してください</td></tr></tbody>
         </table></div>
+      </div>
+    </div>
+
+    <div class="sensitive-modal-overlay" id="snsBankOriginalModal" onclick="closeSnsBankOriginalModal(event)" aria-hidden="true">
+      <div class="sensitive-modal" role="dialog" aria-modal="true" aria-labelledby="snsBankOriginalTitle">
+        <h2 id="snsBankOriginalTitle">支払い用｜振込先口座の原本確認</h2>
+        <p id="snsBankOriginalTarget"></p>
+        <div class="alert alert-warn">この操作は、月次の支払いデータ作成・銀行振込前の照合に限ってください。確認の成功・失敗と理由を監査ログへ保存します。通常の一覧やCSVには口座原本を表示しません。</div>
+        <form id="snsBankOriginalForm" onsubmit="requestSnsBankOriginal(event)">
+          <input type="hidden" id="snsBankOriginalLineUid">
+          <div class="sensitive-form-row">
+            <label for="snsBankOriginalViewer">閲覧者</label>
+            <select id="snsBankOriginalViewer" required>
+              <option value="">選択してください</option>
+              <option value="開発担当">開発担当</option>
+              <option value="渡部大輔">渡部大輔</option>
+            </select>
+          </div>
+          <div class="sensitive-form-row">
+            <label for="snsBankOriginalPurpose">閲覧理由（10〜300文字）</label>
+            <textarea id="snsBankOriginalPurpose" minlength="10" maxlength="300" required placeholder="例：2026年9月SNS動画施策の振込データ確認"></textarea>
+          </div>
+          <div class="sensitive-form-row">
+            <label for="snsBankOriginalPassword">管理者パスワードを再入力</label>
+            <input type="password" id="snsBankOriginalPassword" autocomplete="current-password" required>
+          </div>
+          <div id="snsBankOriginalError" class="alert alert-error" style="display:none;"></div>
+          <div class="sensitive-actions">
+            <button class="btn" type="button" onclick="closeSnsBankOriginalModal()">キャンセル</button>
+            <button class="btn btn-warning" id="snsBankOriginalSubmit" type="submit">再認証して原本を確認</button>
+          </div>
+        </form>
+        <div class="sensitive-result" id="snsBankOriginalResult" aria-live="polite"></div>
       </div>
     </div>
 
@@ -479,6 +542,7 @@
   let expenseData = [];
   let expenseSettings = null;
   let snsVideoSubmissionData = [];
+  let snsBankOriginalTimer = null;
 
   // --- ログイン（sessionStorageでページリロード後も維持） ---
   function doLogin() {
@@ -1127,7 +1191,7 @@
   function renderSnsVideoSubmissionTable() {
     const tbody = document.getElementById('snsVideoTableBody');
     if (!snsVideoSubmissionData.length) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">スタッフが登録されていません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">スタッフが登録されていません</td></tr>';
       return;
     }
     tbody.innerHTML = snsVideoSubmissionData.map(row => {
@@ -1136,6 +1200,9 @@
       const account = row.accountStatus === 'complete'
         ? '<span class="status-ok">登録済み</span>'
         : (row.accountStatus === 'needs_review' ? '<span class="status-warn">要確認</span>' : '<span class="status-warn">未提出</span>');
+      const action = row.accountStatus === 'complete'
+        ? `<button class="btn btn-warning btn-sm" data-line-uid="${escapeHtml(row.lineUid)}" data-staff-name="${escapeHtml(row.name)}" onclick="openSnsBankOriginalModal(this.dataset.lineUid, this.dataset.staffName)">原本確認</button>`
+        : '-';
       return `<tr>
         <td><strong>${escapeHtml(row.name)}</strong></td>
         <td><span class="badge ${roleClass}">${escapeHtml(row.role || '-')}</span></td>
@@ -1145,8 +1212,97 @@
         <td style="font-size:12px;color:#666;">${formatSnsDate(row.accountSubmittedAt)}</td>
         <td>${escapeHtml(row.accountLast4 || '-')}</td>
         <td>${escapeHtml(row.accountHolderKanaMasked || '-')}</td>
+        <td>${action}</td>
       </tr>`;
     }).join('');
+  }
+
+  function openSnsBankOriginalModal(lineUid, staffName) {
+    clearTimeout(snsBankOriginalTimer);
+    document.getElementById('snsBankOriginalLineUid').value = lineUid || '';
+    document.getElementById('snsBankOriginalTarget').textContent = `対象：${staffName || '未設定'}さん。口座原本は表示後60秒で自動的に消去されます。`;
+    document.getElementById('snsBankOriginalViewer').value = '';
+    document.getElementById('snsBankOriginalPurpose').value = '';
+    document.getElementById('snsBankOriginalPassword').value = '';
+    document.getElementById('snsBankOriginalError').style.display = 'none';
+    document.getElementById('snsBankOriginalForm').style.display = 'block';
+    const result = document.getElementById('snsBankOriginalResult');
+    result.classList.remove('active');
+    result.textContent = '';
+    const modal = document.getElementById('snsBankOriginalModal');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('snsBankOriginalViewer').focus();
+  }
+
+  function closeSnsBankOriginalModal(event) {
+    if (event && event.target !== document.getElementById('snsBankOriginalModal')) return;
+    clearTimeout(snsBankOriginalTimer);
+    const modal = document.getElementById('snsBankOriginalModal');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.getElementById('snsBankOriginalLineUid').value = '';
+    document.getElementById('snsBankOriginalPurpose').value = '';
+    document.getElementById('snsBankOriginalPassword').value = '';
+    document.getElementById('snsBankOriginalResult').textContent = '';
+  }
+
+  function renderSnsBankOriginal(original, remaining) {
+    const result = document.getElementById('snsBankOriginalResult');
+    result.innerHTML = `<div class="alert alert-error">口座原本を画面・CSV・メモへ転記しないでください。<span class="sensitive-countdown" id="snsBankOriginalCountdown">残り${remaining}秒</span>で自動的に消去します。</div>
+      <table class="sensitive-record"><tbody>
+        <tr><th>対象スタッフ</th><td>${escapeHtml(original.name)}（${escapeHtml(original.role || '役職未設定')}）</td></tr>
+        <tr><th>金融機関</th><td>${escapeHtml(original.bankName)}</td></tr>
+        <tr><th>支店</th><td>${escapeHtml(original.branchName)}</td></tr>
+        <tr><th>預金種別</th><td>${escapeHtml(original.accountType)}</td></tr>
+        <tr><th>口座番号</th><td>${escapeHtml(original.accountNumber)}</td></tr>
+        <tr><th>名義カナ</th><td>${escapeHtml(original.accountHolderKana)}</td></tr>
+        <tr><th>登録日時</th><td>${escapeHtml(formatSnsDate(original.submittedAt))}</td></tr>
+      </tbody></table>
+      <div class="sensitive-actions"><button class="btn btn-primary" type="button" onclick="closeSnsBankOriginalModal()">確認を終了して消去</button></div>`;
+    result.classList.add('active');
+    let seconds = remaining;
+    snsBankOriginalTimer = setInterval(() => {
+      seconds -= 1;
+      const countdown = document.getElementById('snsBankOriginalCountdown');
+      if (countdown) countdown.textContent = `残り${Math.max(seconds, 0)}秒`;
+      if (seconds <= 0) {
+        clearInterval(snsBankOriginalTimer);
+        closeSnsBankOriginalModal();
+      }
+    }, 1000);
+  }
+
+  async function requestSnsBankOriginal(event) {
+    event.preventDefault();
+    const error = document.getElementById('snsBankOriginalError');
+    error.style.display = 'none';
+    const submit = document.getElementById('snsBankOriginalSubmit');
+    submit.disabled = true;
+    submit.textContent = '再認証中...';
+    try {
+      const d = await apiPost('/api/admin/sns-video-bank-account-original', {
+        lineUid: document.getElementById('snsBankOriginalLineUid').value,
+        viewerName: document.getElementById('snsBankOriginalViewer').value,
+        purpose: document.getElementById('snsBankOriginalPurpose').value,
+        disclosurePassword: document.getElementById('snsBankOriginalPassword').value
+      });
+      document.getElementById('snsBankOriginalPassword').value = '';
+      if (!d.success) {
+        error.textContent = d.error || '口座原本を確認できませんでした。';
+        error.style.display = 'block';
+        return;
+      }
+      document.getElementById('snsBankOriginalForm').style.display = 'none';
+      renderSnsBankOriginal(d.original, Number(d.expiresInSeconds) || 60);
+    } catch (e) {
+      document.getElementById('snsBankOriginalPassword').value = '';
+      error.textContent = '通信エラーが発生しました。口座原本は表示されていません。';
+      error.style.display = 'block';
+    } finally {
+      submit.disabled = false;
+      submit.textContent = '再認証して原本を確認';
+    }
   }
 
   // --- 日報一覧 ---
