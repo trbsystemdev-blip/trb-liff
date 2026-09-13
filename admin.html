@@ -131,6 +131,11 @@
     }
     .wage-input:focus { border-color: #0f3460; }
     .wage-input.saved { border-color: #2e7d32; background: #f1f8e9; }
+    .role-select {
+      min-width: 130px; padding: 5px 7px; border: 2px solid #e0e0e0; border-radius: 6px;
+      background: white; font-size: 12px; outline: none;
+    }
+    .role-select:focus { border-color: #0f3460; }
     .saved-badge {
       display: none; background: #e8f5e9; color: #2e7d32;
       padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
@@ -155,6 +160,7 @@
     }
     .badge-main { background: #e3f2fd; color: #1565c0; }
     .badge-sub { background: #f3e5f5; color: #6a1b9a; }
+    .badge-guide { background: #e0f2f1; color: #00695c; }
     .badge-shift-full { background: #e8f5e9; color: #2e7d32; }
     .badge-shift-half { background: #fff8e1; color: #f57f17; }
     .badge-shift-off { background: #ffebee; color: #c62828; }
@@ -454,7 +460,8 @@
     <div class="tab-content" id="tab-sns-video">
       <div class="card">
         <div class="card-title">🎥 参加同意・振込先口座の提出状況</div>
-        <div class="alert alert-info">参加同意の日時と、振込先口座の提出状況を確認できます。口座番号は下4桁のみを表示します。支払い前の原本確認は、対象者を選び、閲覧理由と管理者パスワードの再入力を経て行います。</div>
+        <div class="alert alert-info">参加同意の日時と、振込先口座の提出状況を確認できます。口座番号は下4桁のみを表示します。支払い前の原本確認は、対象者を選び、閲覧理由と原本確認用パスワードの再入力を経て行います。</div>
+        <button class="btn btn-warning" onclick="openSnsBankPasswordModal()" style="margin:0 8px 16px 0;">原本確認用パスワードを設定・変更</button>
         <button class="btn btn-primary" onclick="loadSnsVideoSubmissions()" style="margin-bottom:16px;">更新</button>
         <div id="snsVideoLoading" class="loading" style="display:none;"><span class="spinner"></span>読み込み中...</div>
         <div class="table-wrap"><table>
@@ -484,7 +491,7 @@
             <textarea id="snsBankOriginalPurpose" minlength="10" maxlength="300" required placeholder="例：2026年9月SNS動画施策の振込データ確認"></textarea>
           </div>
           <div class="sensitive-form-row">
-            <label for="snsBankOriginalPassword">管理者パスワードを再入力</label>
+            <label for="snsBankOriginalPassword">原本確認用パスワードを入力</label>
             <input type="password" id="snsBankOriginalPassword" autocomplete="current-password" required>
           </div>
           <div id="snsBankOriginalError" class="alert alert-error" style="display:none;"></div>
@@ -494,6 +501,42 @@
           </div>
         </form>
         <div class="sensitive-result" id="snsBankOriginalResult" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="sensitive-modal-overlay" id="snsBankPasswordModal" onclick="closeSnsBankPasswordModal(event)" aria-hidden="true">
+      <div class="sensitive-modal" role="dialog" aria-modal="true" aria-labelledby="snsBankPasswordTitle">
+        <h2 id="snsBankPasswordTitle">支払い用｜原本確認パスワードの設定・変更</h2>
+        <p id="snsBankPasswordDescription">現在の管理者パスワードを再入力してから、原本確認専用の新しいパスワードを設定します。パスワードの値は表示・監査ログ保存されません。</p>
+        <div class="alert alert-warn">原本確認用パスワードは16文字以上で設定してください。変更後は、原本確認時に新しい専用パスワードが必要です。</div>
+        <form id="snsBankPasswordForm" onsubmit="saveSnsBankPassword(event)">
+          <div class="sensitive-form-row"><label for="snsBankPasswordOperator">変更担当者</label><select id="snsBankPasswordOperator" required><option value="">選択してください</option><option value="開発担当">開発担当</option><option value="渡部大輔">渡部大輔</option></select></div>
+          <div class="sensitive-form-row"><label for="snsBankPasswordPurpose">変更理由（10〜300文字）</label><textarea id="snsBankPasswordPurpose" minlength="10" maxlength="300" required placeholder="例：支払い担当者変更に伴う定期更新のため"></textarea></div>
+          <div class="sensitive-form-row"><label for="snsBankCurrentAdminPassword">現在の管理者パスワードを再入力</label><input type="password" id="snsBankCurrentAdminPassword" autocomplete="current-password" required></div>
+          <div class="sensitive-form-row" id="snsBankCurrentDisclosureRow" style="display:none;"><label for="snsBankCurrentDisclosurePassword">現在の原本確認用パスワード</label><input type="password" id="snsBankCurrentDisclosurePassword" autocomplete="current-password"></div>
+          <div class="sensitive-form-row"><label for="snsBankNewDisclosurePassword">新しい原本確認用パスワード（16文字以上）</label><input type="password" id="snsBankNewDisclosurePassword" minlength="16" autocomplete="new-password" required></div>
+          <div class="sensitive-form-row"><label for="snsBankNewDisclosurePasswordConfirmation">新しい原本確認用パスワード（確認）</label><input type="password" id="snsBankNewDisclosurePasswordConfirmation" minlength="16" autocomplete="new-password" required></div>
+          <div id="snsBankPasswordError" class="alert alert-error" style="display:none;"></div>
+          <div class="sensitive-actions"><button class="btn" type="button" onclick="closeSnsBankPasswordModal()">キャンセル</button><button class="btn btn-warning" id="snsBankPasswordSubmit" type="submit">設定を保存</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="sensitive-modal-overlay" id="staffActionModal" onclick="closeStaffActionModal(event)" aria-hidden="true">
+      <div class="sensitive-modal" role="dialog" aria-modal="true" aria-labelledby="staffActionTitle">
+        <h2 id="staffActionTitle">スタッフ操作</h2><p id="staffActionTarget"></p>
+        <div class="alert alert-warn" id="staffActionNotice"></div>
+        <form id="staffActionForm" onsubmit="submitStaffAction(event)">
+          <input type="hidden" id="staffActionLineUid"><input type="hidden" id="staffActionKind"><input type="hidden" id="staffActionName">
+          <div class="sensitive-form-row" id="staffActionRoleRow" style="display:none;"><label for="staffActionNewRole">変更後の役職</label><select id="staffActionNewRole"><option value="メインドライバー">メインドライバー</option><option value="サブドライバー">サブドライバー</option><option value="ガイド">ガイド</option></select></div>
+          <div class="sensitive-form-row"><label for="staffActionOperator">実施者</label><select id="staffActionOperator" required><option value="">選択してください</option><option value="開発担当">開発担当</option><option value="渡部大輔">渡部大輔</option></select></div>
+          <div class="sensitive-form-row"><label for="staffActionReason">理由（10〜300文字）</label><textarea id="staffActionReason" minlength="10" maxlength="300" required placeholder="例：重複登録を整理するため"></textarea></div>
+          <div class="sensitive-form-row"><label for="staffActionAdminPassword">現在の管理者パスワードを再入力</label><input type="password" id="staffActionAdminPassword" autocomplete="current-password" required></div>
+          <div class="sensitive-form-row" id="staffActionNameRow" style="display:none;"><label for="staffActionConfirmationName">確認用氏名</label><input type="text" id="staffActionConfirmationName" placeholder="対象スタッフの氏名を正確に入力"></div>
+          <div class="sensitive-form-row"><label for="staffActionConfirmation">確認欄</label><input type="text" id="staffActionConfirmation" required></div>
+          <div id="staffActionError" class="alert alert-error" style="display:none;"></div>
+          <div class="sensitive-actions"><button class="btn" type="button" onclick="closeStaffActionModal()">キャンセル</button><button class="btn btn-danger" id="staffActionSubmit" type="submit">実行する</button></div>
+        </form>
       </div>
     </div>
 
@@ -543,6 +586,7 @@
   let expenseSettings = null;
   let snsVideoSubmissionData = [];
   let snsBankOriginalTimer = null;
+  let snsBankPasswordConfigured = false;
 
   // --- ログイン（sessionStorageでページリロード後も維持） ---
   function doLogin() {
@@ -646,6 +690,12 @@
     document.getElementById('staffTableWrap').style.display = 'block';
   }
 
+  function roleBadgeClass(role) {
+    if (role && role.includes('メイン')) return 'badge-main';
+    if (role && role.includes('ガイド')) return 'badge-guide';
+    return 'badge-sub';
+  }
+
   function renderStaffTable() {
     const tbody = document.getElementById('staffTableBody');
     if (!staffData.length) {
@@ -653,17 +703,30 @@
       return;
     }
     tbody.innerHTML = staffData.map((u, idx) => {
-      const roleClass = u.role && u.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const roleClass = roleBadgeClass(u.role);
+      const isActive = u.is_active !== false;
       const hasState = u.state && u.state !== '';
-      const stateLabel = hasState
+      const stateLabel = !isActive
+        ? '<span class="status-warn">無効</span>'
+        : (hasState
         ? `<span class="status-warn">${u.state}</span>`
-        : '<span class="status-ok">正常</span>';
+        : '<span class="status-ok">正常</span>');
       const resetBtn = hasState
         ? `<button class="btn btn-warning btn-sm" data-idx="${idx}" onclick="resetState(this)">stateリセット</button>`
         : '';
+      const staffActionButtons = isActive
+        ? `<button class="btn btn-warning btn-sm" data-idx="${idx}" onclick="openStaffActionModal(this.dataset.idx, 'deactivate')">無効化</button>`
+        : `<button class="btn btn-success btn-sm" data-idx="${idx}" onclick="openStaffActionModal(this.dataset.idx, 'restore')">復元</button><button class="btn btn-danger btn-sm" data-idx="${idx}" onclick="openStaffActionModal(this.dataset.idx, 'permanent-delete')">完全削除</button>`;
       return `<tr>
         <td><strong>${u.name || '<span style="color:#999;">未設定</span>'}</strong></td>
-        <td><span class="badge ${roleClass}">${u.role || '-'}</span></td>
+        <td>
+          <select class="role-select" id="roleSelect_${idx}" data-uid="${u.line_uid}">
+            <option value="メインドライバー" ${u.role === 'メインドライバー' ? 'selected' : ''}>メインドライバー</option>
+            <option value="サブドライバー" ${u.role === 'サブドライバー' ? 'selected' : ''}>サブドライバー</option>
+            <option value="ガイド" ${u.role === 'ガイド' ? 'selected' : ''}>ガイド</option>
+          </select>
+          <div style="margin-top:4px;"><span class="badge ${roleClass}">現在：${u.role || '未設定'}</span></div>
+        </td>
         <td>
           <input class="wage-input" type="number" id="wageInput_${idx}" data-uid="${u.line_uid}" value="${u.hourly_wage || 0}" min="0" max="99999" step="10">
           <span style="font-size:12px;color:#666;"> 円/時</span>
@@ -672,7 +735,9 @@
         <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-primary btn-sm" data-idx="${idx}" onclick="saveWage(this)">保存</button>
           <span class="saved-badge" id="savedBadge_${idx}">✓ 保存済み</span>
+          <button class="btn btn-sm" data-idx="${idx}" onclick="openStaffActionModal(this.dataset.idx, 'role-update')">役職変更</button>
           ${resetBtn}
+          ${staffActionButtons}
         </td>
       </tr>`;
     }).join('');
@@ -723,6 +788,78 @@
     }
   }
 
+  const staffActionConfig = {
+    'role-update': { endpoint: '/api/admin/staff/role', confirmation: '役職変更', title: 'スタッフの役職を変更', submitLabel: '役職を変更する', notice: '役職変更は勤怠・給与・SNS動画施策の管理表示に影響します。実施者、理由、現在の管理者パスワード、確認語を入力して保存してください。' },
+    deactivate: { endpoint: '/api/admin/staff/deactivate', confirmation: '無効化', title: 'スタッフを無効化', submitLabel: '無効化する', notice: '勤怠・日報・シフト・経費・SNS提出の履歴を残したまま、LINEからの操作を停止します。復元できます。' },
+    restore: { endpoint: '/api/admin/staff/restore', confirmation: '復元', title: 'スタッフを復元', submitLabel: '復元する', notice: '無効化したスタッフのLINE操作を再開します。履歴は変更しません。' },
+    'permanent-delete': { endpoint: '/api/admin/staff/permanent-delete', confirmation: '完全削除', title: 'スタッフを完全削除', submitLabel: '完全削除する', notice: '履歴が一件でもあるスタッフは完全削除できません。履歴がない重複・誤登録だけが対象です。削除後は復元できません。' }
+  };
+
+  function openStaffActionModal(idx, kind) {
+    const staff = staffData[Number(idx)];
+    const config = staffActionConfig[kind];
+    if (!staff || !config) return;
+    document.getElementById('staffActionLineUid').value = staff.line_uid || '';
+    document.getElementById('staffActionKind').value = kind;
+    document.getElementById('staffActionName').value = staff.name || '';
+    document.getElementById('staffActionTitle').textContent = config.title;
+    document.getElementById('staffActionTarget').textContent = `対象：${staff.name || '未設定'}さん（${staff.role || '役職未設定'}）`;
+    document.getElementById('staffActionNotice').textContent = config.notice;
+    document.getElementById('staffActionConfirmation').value = '';
+    document.getElementById('staffActionConfirmation').placeholder = `「${config.confirmation}」と入力してください`;
+    document.getElementById('staffActionOperator').value = '';
+    document.getElementById('staffActionReason').value = '';
+    document.getElementById('staffActionAdminPassword').value = '';
+    document.getElementById('staffActionConfirmationName').value = '';
+    const selectedRole = document.getElementById(`roleSelect_${idx}`);
+    document.getElementById('staffActionNewRole').value = selectedRole ? selectedRole.value : (staff.role || 'メインドライバー');
+    document.getElementById('staffActionRoleRow').style.display = kind === 'role-update' ? 'block' : 'none';
+    document.getElementById('staffActionNameRow').style.display = kind === 'permanent-delete' ? 'block' : 'none';
+    document.getElementById('staffActionError').style.display = 'none';
+    document.getElementById('staffActionSubmit').textContent = config.submitLabel;
+    const modal = document.getElementById('staffActionModal');
+    modal.classList.add('active'); modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('staffActionOperator').focus();
+  }
+
+  function closeStaffActionModal(event) {
+    if (event && event.target !== document.getElementById('staffActionModal')) return;
+    const modal = document.getElementById('staffActionModal');
+    modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true');
+    document.getElementById('staffActionAdminPassword').value = '';
+    document.getElementById('staffActionConfirmationName').value = '';
+  }
+
+  async function submitStaffAction(event) {
+    event.preventDefault();
+    const kind = document.getElementById('staffActionKind').value;
+    const config = staffActionConfig[kind];
+    if (!config) return;
+    const error = document.getElementById('staffActionError'); error.style.display = 'none';
+    const body = {
+      lineUid: document.getElementById('staffActionLineUid').value,
+      operatorName: document.getElementById('staffActionOperator').value,
+      reason: document.getElementById('staffActionReason').value,
+      currentAdminPassword: document.getElementById('staffActionAdminPassword').value,
+      confirmation: document.getElementById('staffActionConfirmation').value,
+      confirmationName: document.getElementById('staffActionConfirmationName').value,
+      newRole: document.getElementById('staffActionNewRole').value
+    };
+    if (!confirm(`「${config.confirmation}」を実行します。よろしいですか？`)) return;
+    const submit = document.getElementById('staffActionSubmit'); submit.disabled = true;
+    try {
+      const d = await apiPost(config.endpoint, body);
+      document.getElementById('staffActionAdminPassword').value = '';
+      if (!d.success) { error.textContent = d.error || 'スタッフ操作に失敗しました。'; error.style.display = 'block'; return; }
+      closeStaffActionModal();
+      await loadStaff();
+      alert(kind === 'role-update' ? `役職を「${d.role || body.newRole}」へ変更しました。` : (kind === 'deactivate' ? '無効化しました。' : (kind === 'restore' ? '復元しました。' : '完全削除しました。')));
+    } catch (e) {
+      document.getElementById('staffActionAdminPassword').value = '';
+      error.textContent = '通信エラーが発生しました。操作結果を確認してください。'; error.style.display = 'block';
+    } finally { submit.disabled = false; }
+  }
+
   async function doRecalculate() {
     const ym = document.getElementById('recalcMonth').value.replace('-','');
     if (!ym) { alert('月を選択してください'); return; }
@@ -759,7 +896,7 @@
       return;
     }
     tbody.innerHTML = attData.map(r => {
-      const roleClass = r.role && r.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const roleClass = roleBadgeClass(r.role);
       const reserveOnly = r.reserveOnly === true;
       const clockInDisplay = reserveOnly ? '<span class="status-warn">リザーブのみ</span>' : r.clockIn;
       const clockOutDisplay = reserveOnly ? '-' : (r.clockOut !== '-' ? r.clockOut : '<span class="status-warn">未退勤</span>');
@@ -824,7 +961,7 @@
       return;
     }
     tbody.innerHTML = monthlyData.map(s => {
-      const roleClass = s.role && s.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const roleClass = roleBadgeClass(s.role);
       return `<tr>
         <td><strong>${s.name}</strong></td>
         <td><span class="badge ${roleClass}">${s.role || '-'}</span></td>
@@ -1195,7 +1332,7 @@
       return;
     }
     tbody.innerHTML = snsVideoSubmissionData.map(row => {
-      const roleClass = row.role && row.role.includes('メイン') ? 'badge-main' : 'badge-sub';
+      const roleClass = roleBadgeClass(row.role);
       const consent = row.consentedAt ? '<span class="status-ok">提出済み</span>' : '<span class="status-warn">未提出</span>';
       const account = row.accountStatus === 'complete'
         ? '<span class="status-ok">登録済み</span>'
@@ -1303,6 +1440,61 @@
       submit.disabled = false;
       submit.textContent = '再認証して原本を確認';
     }
+  }
+
+  async function openSnsBankPasswordModal() {
+    const modal = document.getElementById('snsBankPasswordModal');
+    document.getElementById('snsBankPasswordOperator').value = '';
+    document.getElementById('snsBankPasswordPurpose').value = '';
+    document.getElementById('snsBankCurrentAdminPassword').value = '';
+    document.getElementById('snsBankCurrentDisclosurePassword').value = '';
+    document.getElementById('snsBankNewDisclosurePassword').value = '';
+    document.getElementById('snsBankNewDisclosurePasswordConfirmation').value = '';
+    document.getElementById('snsBankPasswordError').style.display = 'none';
+    modal.classList.add('active'); modal.setAttribute('aria-hidden', 'false');
+    try {
+      const d = await apiGet('/api/admin/sns-video-bank-password-status');
+      if (!d.success) throw new Error(d.error || '設定を確認できませんでした。');
+      snsBankPasswordConfigured = Boolean(d.configured);
+      document.getElementById('snsBankCurrentDisclosureRow').style.display = snsBankPasswordConfigured ? 'block' : 'none';
+      document.getElementById('snsBankCurrentDisclosurePassword').required = snsBankPasswordConfigured;
+      document.getElementById('snsBankPasswordTitle').textContent = snsBankPasswordConfigured ? '支払い用｜原本確認パスワードの変更' : '支払い用｜原本確認パスワードの初期設定';
+      document.getElementById('snsBankPasswordDescription').textContent = snsBankPasswordConfigured
+        ? '現在の管理者パスワードと現在の原本確認用パスワードを確認してから、新しい専用パスワードへ変更します。'
+        : '現在の管理者パスワードを再入力してから、原本確認専用のパスワードを初めて設定します。';
+    } catch (e) {
+      const error = document.getElementById('snsBankPasswordError');
+      error.textContent = '設定状態を確認できませんでした。SQL移行と管理者ログインを確認してください。'; error.style.display = 'block';
+    }
+    document.getElementById('snsBankPasswordOperator').focus();
+  }
+
+  function closeSnsBankPasswordModal(event) {
+    if (event && event.target !== document.getElementById('snsBankPasswordModal')) return;
+    const modal = document.getElementById('snsBankPasswordModal');
+    modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true');
+    ['snsBankCurrentAdminPassword','snsBankCurrentDisclosurePassword','snsBankNewDisclosurePassword','snsBankNewDisclosurePasswordConfirmation'].forEach(id => { document.getElementById(id).value = ''; });
+  }
+
+  async function saveSnsBankPassword(event) {
+    event.preventDefault();
+    const error = document.getElementById('snsBankPasswordError'); error.style.display = 'none';
+    const submit = document.getElementById('snsBankPasswordSubmit'); submit.disabled = true; submit.textContent = '保存中...';
+    try {
+      const d = await apiPost('/api/admin/sns-video-bank-password', {
+        operatorName: document.getElementById('snsBankPasswordOperator').value,
+        purpose: document.getElementById('snsBankPasswordPurpose').value,
+        currentAdminPassword: document.getElementById('snsBankCurrentAdminPassword').value,
+        currentDisclosurePassword: document.getElementById('snsBankCurrentDisclosurePassword').value,
+        newDisclosurePassword: document.getElementById('snsBankNewDisclosurePassword').value,
+        newDisclosurePasswordConfirmation: document.getElementById('snsBankNewDisclosurePasswordConfirmation').value
+      });
+      if (!d.success) { error.textContent = d.error || '原本確認用パスワードを保存できませんでした。'; error.style.display = 'block'; return; }
+      alert(d.changed ? '原本確認用パスワードを変更しました。' : '原本確認用パスワードを設定しました。');
+      closeSnsBankPasswordModal();
+    } catch (e) {
+      error.textContent = '通信エラーが発生しました。パスワードは変更されていません。'; error.style.display = 'block';
+    } finally { submit.disabled = false; submit.textContent = '設定を保存'; }
   }
 
   // --- 日報一覧 ---
