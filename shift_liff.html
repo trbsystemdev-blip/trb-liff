@@ -66,6 +66,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-text { font-size: 14px; color: #555; }
     .notice { background: #fff9e6; border: 1px solid #ffd700; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #856404; margin-bottom: 16px; line-height: 1.6; }
+    .restriction-notice { display:none; background:#fff1f0; border:1px solid #ffb3ad; border-radius:8px; padding:12px; font-size:13px; color:#8a1f11; margin-bottom:16px; line-height:1.6; }
+    .restriction-notice.active { display:block; }
+    .shift-form-disabled { opacity:0.45; pointer-events:none; }
   </style>
 </head>
 <body>
@@ -79,6 +82,8 @@
     ⚠️ シフトは<strong>2週間前まで</strong>に入力してください。<br>
     メインドライバーが先に入力し、サブドライバーが後に入力します。
   </div>
+  <div class="restriction-notice" id="restrictionNotice" role="alert"></div>
+  <div id="shiftForm">
   <div class="month-nav">
     <button id="prevMonth" onclick="changeMonth(-1)">◀</button>
     <span class="month-title" id="monthTitle"></span>
@@ -97,6 +102,7 @@
   <button class="submit-btn" id="submitBtn" onclick="submitShifts()" disabled>
     シフト希望を送信する
   </button>
+  </div>
 </div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal">
@@ -127,7 +133,7 @@
 <script>
   const LIFF_ID = "2010362932-i36wC8iO";
   const GAS_URL = "https://trb-backend.vercel.app";
-  let lineUid = null, userName = "";
+  let lineUid = null, userName = "", shiftSubmissionAllowed = false;
   let currentYear, currentMonth;
   let selectedDate = null;
   let shiftData = {};
@@ -143,10 +149,41 @@
     document.getElementById("userInfo").textContent = "👤 " + userName;
     currentYear = today.getFullYear();
     currentMonth = today.getMonth();
-    renderCalendar();
+    return loadShiftEligibility();
   }).catch(err => {
     document.getElementById("userInfo").textContent = "⚠️ ログインエラー";
   });
+
+  async function loadShiftEligibility() {
+    try {
+      const response = await fetch(GAS_URL + "/api/liff?action=getUserInfo&lineUid=" + encodeURIComponent(lineUid));
+      const data = await response.json();
+      if (!data.success || !data.user) {
+        restrictShiftForm("スタッフ登録を確認できません。管理者へご連絡ください。");
+        return;
+      }
+      if (data.user.isActive === false) {
+        restrictShiftForm("このスタッフ登録は無効化されています。シフト希望は送信できません。");
+        return;
+      }
+      if (data.user.role === "ガイド") {
+        restrictShiftForm("ガイドはシフト希望を利用できません。シフト希望はドライバー役職の方が提出します。");
+        return;
+      }
+      shiftSubmissionAllowed = true;
+      renderCalendar();
+    } catch (err) {
+      restrictShiftForm("スタッフ情報を確認できませんでした。通信環境を確認してもう一度開いてください。");
+    }
+  }
+
+  function restrictShiftForm(message) {
+    shiftSubmissionAllowed = false;
+    document.getElementById("restrictionNotice").textContent = message;
+    document.getElementById("restrictionNotice").classList.add("active");
+    document.getElementById("shiftForm").classList.add("shift-form-disabled");
+    document.getElementById("submitBtn").disabled = true;
+  }
 
   function renderCalendar() {
     document.getElementById("monthTitle").textContent = currentYear + "年" + (currentMonth + 1) + "月";
@@ -202,6 +239,7 @@
   }
 
   function openModal(dateStr, day, month) {
+    if (!shiftSubmissionAllowed) return;
     selectedDate = dateStr;
     document.getElementById("modalTitle").textContent = month + "月" + day + "日 のシフト希望";
     document.querySelectorAll(".shift-option").forEach(el => el.classList.remove("selected"));
@@ -225,6 +263,7 @@
   }
 
   function selectShift(type) {
+    if (!shiftSubmissionAllowed) return;
     if (!selectedDate) return;
     if (type === "出勤希望") {
       const startTime = document.getElementById("shiftStartTime").value;
@@ -260,10 +299,14 @@
   }
 
   function submitShifts() {
+    if (!shiftSubmissionAllowed) {
+      alert("この役職ではシフト希望を送信できません。");
+      return;
+    }
     const entries = Object.entries(shiftData).map(([date, entry]) => ({ date, type: entry.type, startTime: entry.startTime, endTime: entry.endTime }));
     if (entries.length === 0) { alert("シフトを1件以上設定してください。"); return; }
     document.getElementById("loading").classList.add("active");
-    fetch(GAS_URL + "/api/liff", {
+    fetch(GAS_URL + "/api/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "saveShifts", lineUid: lineUid, entries: entries })
